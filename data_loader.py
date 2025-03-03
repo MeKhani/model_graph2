@@ -5,7 +5,7 @@ import torch
 from generate_model_graph import build_model_graph
 from data_prosessing import data2pkl 
 from subgraph_genrator import gen_subgraph_datasets 
-from tools import set_seed , get_num_rel
+from tools import set_seed , get_num_rel, get_g
 import pickle
 
 
@@ -41,6 +41,6 @@ def load_and_pre_processing_data(args):
         gen_subgraph_datasets(args,)
      model_data = pickle.load(open(args.data_model_graph, 'rb'))
      model_triples, _ = model_data['model_graph']['triples'],model_data['model_graph']['ent_type']
-     model_graph = 
+     model_graph = get_g(list(model_triples)) 
 
         
