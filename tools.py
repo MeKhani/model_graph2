@@ -19,10 +19,10 @@ def deserialize(data):
 
 
 
-def get_g(tri_list):
+def get_g(tri_list, name_edge = "rel"):
     triples = np.array(tri_list)
     g = dgl.graph((triples[:, 0].T, triples[:, 2].T))
-    g.edata['rel'] = torch.tensor(triples[:, 1].T)
+    g.edata[name_edge] = torch.tensor(triples[:, 1].T, dtype=torch.float32)
     return g
 
 
@@ -75,12 +75,26 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-def write_evaluation_result( result_best, path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)  # Ensure directory exists
+# def write_evaluation_result(result_best, path):
+#     print("write result on disk ")
+#     os.makedirs(os.path.dirname(path), exist_ok=True)  # Ensure the directory exists
+
+#     try:
+#         with open(path, "w", encoding="utf-8") as f:  # Open file in write mode
+#             json.dump(result_best, f, indent=4)  # Save dictionary as JSON
+#     except PermissionError:
+#         print(f"Permission denied: {path}. Make sure the file is not open elsewhere.")
+
+import csv
+
+def write_evaluation_result(result_best, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
 
     try:
-        with open(path, "+w") as f:
-            f.write(result_best)  # Write result
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            for key, value in result_best.items():
+                writer.writerow([key, value])  # Save as key-value pairs
     except PermissionError:
         print(f"Permission denied: {path}. Make sure the file is not open elsewhere.")
 

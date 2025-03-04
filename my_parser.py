@@ -2,9 +2,10 @@ import argparse
 
 def parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_name', default='fb237_v1')
+    parser.add_argument('--data_name', default='nell_v1')
 
-    parser.add_argument('--name', default='fb237_v1_transe', type=str)
+    parser.add_argument('--name', default='nell_v1', type=str)
+    # parser.add_argument('--name', default='fb237_v1_transe', type=str)
 
     parser.add_argument('--step', default='meta_train', type=str, choices=['meta_train', 'fine_tune'])
     parser.add_argument('--metatrain_state', default='./state/fb237_v1_transe/fb237_v1_transe.best', type=str)

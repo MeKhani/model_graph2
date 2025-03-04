@@ -15,12 +15,13 @@ import dgl
 from collections import defaultdict as ddict
 
 class Model_trainer:
-    def __init__(self, args ):
+    def __init__(self, args, model_graph):
         
         train_subgraph_dataset = TrainSubgraphDataset(args)
         valid_subgraph_dataset = ValidSubgraphDataset(args)
         self.args =args 
         self.name = args.name
+        self.model_graph = model_graph
 # state dir
         self.state_path = os.path.join(args.state_dir, self.name)
         if not os.path.exists(self.state_path):
@@ -51,20 +52,23 @@ class Model_trainer:
          for step in pbar :
               for batch in self.train_subgraph_dataloader:
                     batch_loss = 0
-
-                    batch_sup_g = dgl.batch([get_g_bidir(d[0], self.args) for d in batch]).to(self.args.gpu)
-                    ent_type = [d[4]for d in batch]
-                    print(f"the enttype :{ent_type}")
                     embedding = self.get_embedding_from_model_graph()
+                    # batch_sup_g = self.add_model_graph_embedding_to_sub_graphs(batch,embedding )
+                    # batch_sup_g = dgl.batch([get_g_bidir(d[0], self.args) for d in batch]).to(self.args.gpu)
+                    batch_sup_g = dgl.batch([self.add_model_graph_embedding_to_sub_graphs(d, embedding) for d in batch]).to(self.args.gpu)
+                    # print(f"the sub_graph batch is :  {batch_sup_g}")
+                    # ent_type = [d[4]for d in batch]
+                    # print(f"the enttype :{ent_type}")
+                   
                     
                     # self.get_ent_emb(batch_sup_g)
                     #forward data 
-                    self.ent_init(batch_sup_g)
+                    # self.ent_init(batch_sup_g)
                     ent_emb = self.rgcn(batch_sup_g)
 
                     sup_g_list = dgl.unbatch(batch_sup_g)
                     for batch_i, data in enumerate(batch):
-                        que_tri, que_neg_tail_ent, que_neg_head_ent = [d.to(self.args.gpu) for d in data[1:]]
+                        ent_type,que_tri, que_neg_tail_ent, que_neg_head_ent = [d.to(self.args.gpu) for d in data[1:]]
                         ent_emb = sup_g_list[batch_i].ndata['h']
                         # kge loss
                         loss = self.get_loss(que_tri, que_neg_tail_ent, que_neg_head_ent, ent_emb)
@@ -96,7 +100,7 @@ class Model_trainer:
                             is_better_result= False
                             
               result_best ={f"result in {step}":eval_res,f"best result in {best_step}":best_eval_rst}if is_better_result else {f"result in {step}":eval_res,f"bad count is {step}":bad_count} 
-              write_evaluation_result(clear_first ,result_best,self.args.save_result)
+              write_evaluation_result(result_best,self.args.save_result)
             
          self.save_model(best_step)
 
@@ -105,7 +109,8 @@ class Model_trainer:
          self.before_test_load()
          self.evaluate_indtest_test_triples(num_cand=50)
     def save_checkpoint(self, step):
-        state = {'ent_init': self.ent_init.state_dict(),
+        # state = {'ent_init': self.ent_init.state_dict(),
+        state = {'model_g': self.model_g.state_dict(),
                  'rgcn': self.rgcn.state_dict(),
                  'kge_model': self.kge_model.state_dict()}
         # delete previous checkpoint
@@ -119,9 +124,29 @@ class Model_trainer:
         os.rename(os.path.join(self.state_path, self.name + '.' + str(best_step) + '.ckpt'),
                   os.path.join(self.state_path, self.name + '.best'))
 
-    def get_embedding_from_model_graph():
+    def get_embedding_from_model_graph(self):
         
-        print     
+        node_embeddings, _ = self.model_g(self.model_graph,self.model_graph.ndata["feat"]) 
+        return node_embeddings
+    def add_model_graph_embedding_to_sub_graphs(self,b,embedddings ):
+        # Step 1: Validate input
+        sub_g = get_g_bidir(b[0],self.args)
+        ent_type= b[1]
+
+        num_nodes = sub_g.num_nodes()
+        if len(ent_type) != num_nodes:
+            raise ValueError(f"Number of nodes in enttype ({len(ent_type)}) does not match main_graph ({num_nodes})")
+        # Step 2: Create a mapping tensor of type indices
+        type_indices = ent_type[:,1]
+        # Step 3: Assign features using the type indices
+        # sub_g.ndata['feat'] = torch.cat((embedddings[type_indices],main_graph.ndata['feat']) ,dim=1)
+        sub_g.ndata['feat'] = embedddings[type_indices]#+ sub_g.ndata['feat']
+
+        # Debug: Print summary of assigned features
+        # print(f"Assigned features to {num_nodes} nodes. Feature shape: {main_graph.ndata['feat'].shape}")
+        
+        return sub_g
+        
     def get_loss(self, tri, neg_tail_ent, neg_head_ent, ent_emb):
 
         neg_tail_score = self.kge_model((tri, neg_tail_ent), ent_emb, mode='tail-batch')
@@ -217,15 +242,18 @@ class Model_trainer:
                 
                 all_results = ddict(int)
                 for batch in self.valid_subgraph_dataloader:
-                    batch_sup_g = dgl.batch([get_g_bidir(d[0], self.args) for d in batch]).to(self.args.gpu)
+                    # batch_sup_g = dgl.batch([get_g_bidir(d[0], self.args) for d in batch]).to(self.args.gpu)
                     # self.get_ent_emb(batch_sup_g)
-                    self.ent_init(batch_sup_g)
+                    embedding = self.get_embedding_from_model_graph()
+                    # batch_sup_g = self.add_model_graph_embedding_to_sub_graphs(batch,embedding )
+                    # batch_sup_g = dgl.batch([get_g_bidir(d[0], self.args) for d in batch]).to(self.args.gpu)
+                    batch_sup_g = dgl.batch([self.add_model_graph_embedding_to_sub_graphs(d, embedding) for d in batch]).to(self.args.gpu)
                     ent_emb = self.rgcn(batch_sup_g)
 
                     sup_g_list = dgl.unbatch(batch_sup_g)
 
                     for batch_i, data in enumerate(batch):
-                        que_dataloader = data[1]
+                        que_dataloader = data[2]
                         ent_emb = sup_g_list[batch_i].ndata['h']
 
                         results = self.evaluate(ent_emb, que_dataloader)
@@ -240,14 +268,16 @@ class Model_trainer:
                 return all_results
     def before_test_load(self):
         state = torch.load(os.path.join(self.state_path, self.name + '.best'), map_location=self.args.gpu)
-        self.ent_init.load_state_dict(state['ent_init'])
+        # self.ent_init.load_state_dict(state['ent_init'])
+        self.model_g.load_state_dict(state['model_graph'])
         self.rgcn.load_state_dict(state['rgcn'])
         self.kge_model.load_state_dict(state['kge_model'])
 
     def evaluate_indtest_test_triples(self, num_cand='all'):
         """do evaluation on test triples of ind-test-graph"""
         # ent_emb = self.get_ent_emb(self.indtest_train_g)
-        self.ent_init(self.indtest_train_g)
+        # self.ent_init(self.indtest_train_g)
+        # self.model_g(self.indtest_train_g)
         ent_emb = self.rgcn(self.indtest_train_g)
 
         results = self.evaluate(ent_emb, self.indtest_test_dataloader, num_cand=num_cand)

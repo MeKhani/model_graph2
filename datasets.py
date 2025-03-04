@@ -36,9 +36,9 @@ class TrainSubgraphDataset(Dataset):
         # Stack them together
         stacked = torch.stack((keys, values), dim=1) 
 
-        return torch.tensor(sup_tri), torch.tensor(que_tri), \
-               torch.tensor(que_neg_tail_ent), torch.tensor(que_neg_head_ent),\
-               stacked
+        return torch.tensor(sup_tri),stacked, torch.tensor(que_tri), \
+               torch.tensor(que_neg_tail_ent), torch.tensor(que_neg_head_ent)
+               
 
 
 class ValidSubgraphDataset(Dataset):
@@ -66,8 +66,13 @@ class ValidSubgraphDataset(Dataset):
         que_dataset = KGEEvalDataset(self.args, que_tri, nentity, hr2t, rt2h)
         que_dataloader = DataLoader(que_dataset, batch_size=len(que_tri),
                                     collate_fn=KGEEvalDataset.collate_fn)
+        keys = torch.tensor(list(ent_type.keys()), dtype=torch.int64)     
+        values = torch.tensor(list(ent_type.values()), dtype=torch.int64) 
 
-        return torch.tensor(sup_tri), que_dataloader, ent_type
+        # Stack them together
+        stacked = torch.stack((keys, values), dim=1) 
+
+        return torch.tensor(sup_tri),stacked, que_dataloader
 
 
 class KGETrainDataset(Dataset):
