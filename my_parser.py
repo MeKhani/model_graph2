@@ -26,10 +26,10 @@ def parse():
 
     # params for meta-train
     parser.add_argument('--metatrain_num_neg', default=32)
-    parser.add_argument('--train_num_epoch', default=10)
+    parser.add_argument('--train_num_epoch', default=15)
     parser.add_argument('--metatrain_bs', default=64, type=int)
     parser.add_argument('--metatrain_lr', default=0.01, type=float)
-    parser.add_argument('--metatrain_check_per_step', default=10, type=int)
+    parser.add_argument('--metatrain_check_per_step', default=50, type=int)
     parser.add_argument('--indtest_eval_bs', default=512, type=int)
 
     # params for fine-tune

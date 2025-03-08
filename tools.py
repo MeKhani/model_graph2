@@ -27,9 +27,11 @@ def get_g(tri_list, name_edge = "rel"):
 
 
 def get_g_bidir(triples, args):
-    g = dgl.graph((torch.cat([triples[:, 0].T, triples[:, 2].T]),
-                   torch.cat([triples[:, 2].T, triples[:, 0].T])))
-    g.edata['type'] = torch.cat([triples[:, 1].T, triples[:, 1].T + args.num_rel])
+    g = dgl.graph((
+    torch.cat([triples[:, 0].T, triples[:, 2].T]).to(torch.int64),
+    torch.cat([triples[:, 2].T, triples[:, 0].T]).to(torch.int64)
+))
+    g.edata['type'] = torch.cat([triples[:, 1].T, triples[:, 1].T + args.num_rel]).to(torch.int64)
     return g
 
 
@@ -75,28 +77,17 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-# def write_evaluation_result(result_best, path):
-#     print("write result on disk ")
-#     os.makedirs(os.path.dirname(path), exist_ok=True)  # Ensure the directory exists
-
-#     try:
-#         with open(path, "w", encoding="utf-8") as f:  # Open file in write mode
-#             json.dump(result_best, f, indent=4)  # Save dictionary as JSON
-#     except PermissionError:
-#         print(f"Permission denied: {path}. Make sure the file is not open elsewhere.")
-
-import csv
-
-def write_evaluation_result(result_best, path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def write_evaluation_result(result_best, args, type ="main"):
+    path1 = f"E:/phd/semester-5/results/{args.data_name}/{type}result.json"
+    print("write result on disk ")
+    os.makedirs(os.path.dirname(path1), exist_ok=True)  # Ensure the directory exists
 
     try:
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            for key, value in result_best.items():
-                writer.writerow([key, value])  # Save as key-value pairs
+        with open(path1, "a", encoding="utf-8") as f:  # Open file in write mode
+            json.dump(result_best, f, indent=4)  # Save dictionary as JSON
     except PermissionError:
-        print(f"Permission denied: {path}. Make sure the file is not open elsewhere.")
+        print(f"Permission denied: {path1}. Make sure the file is not open elsewhere.")
+
 
 def get_num_rel(args):
     data = pickle.load(open(args.data_path, 'rb'))
@@ -181,6 +172,54 @@ def add_feature_to_model_graph_nodes(graph, i_r, output_relations, input_relatio
             graph.ndata["feat"][node, [2 * num_rel + r for r in rels]] = 1
 
     return graph
+
+
+def get_indtest_test_dataset_and_train_g(args):
+
+    data = pickle.load(open(args.data_path, 'rb'))['ind_test_graph']
+    ent_type= get_ent_types(data,args)
+    num_ent = len(np.unique(np.array(data['train'])[:, [0, 2]]))
+
+    hr2t, rt2h = get_hr2t_rt2h(data['train'])
+
+    from datasets import KGEEvalDataset
+    test_dataset = KGEEvalDataset(args, data['test'], num_ent, hr2t, rt2h)
+
+    g = get_g_bidir(torch.LongTensor(data['train']), args)
+
+    return test_dataset, g ,ent_type
+
+def get_ent_types(data, args):
+    train_g = get_g(data['train'] + data['valid']
+                    + data['test'])
+   
+    num_nodes = train_g.num_nodes()
+    triples = torch.stack([train_g.edges()[0],
+                               train_g.edata['rel'],
+                               train_g.edges()[1]])
+    triples = triples.T.tolist()
+     # Initialize node features with zeros
+    features = torch.zeros((num_nodes, 2 * args.num_rel))
+    
+    # Get edges and their types
+    src, dst = train_g.edges()  # Get edge endpoints
+    etypes = train_g.edata['rel']  # Get edge relation types
+    src = src.to(torch.long)
+    etypes = etypes.to(torch.long)
+
+    # Assign outgoing relation features
+    features[src, etypes] = 1  # Outgoing relations
+    features[dst, etypes + args.num_rel] = 1  # Incoming relations
+    
+    # Find unique rows and their indices
+    # Step 3: Load the trained model
+    with open(f"similarty_model_of_{args.data_name}.pkl", "rb") as f:
+        km_loaded = pickle.load(f)
+
+    # Step 4: Use the loaded model to predict clusters for new data (features2)
+    clusters = km_loaded.predict(features)
+    ent_type = {ent : type for ent, type in enumerate(clusters)}
+    return ent_type 
 def create__model_graph(triples):
      # Extract node and edge information
     src_nodes = [t[0] for t in triples]  # subjects

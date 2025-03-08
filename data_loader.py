@@ -21,7 +21,7 @@ def load_and_pre_processing_data(args):
      args.data_path = f'dataset/{args.data_name}.pkl'
      args.data_model_graph = f'./dataset/{args.data_name}_model_graph.pkl'
      args.db_path = f'dataset/{args.data_name}_subgraph'
-     args.save_result= f"../result/{args.data_name}/result.csv"
+     args.save_result= f"dataset/result/{args.data_name}/result.json"
      if not os.path.exists(args.save_result):
         os.makedirs(args.save_result)
 

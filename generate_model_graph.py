@@ -26,6 +26,8 @@ def build_model_graph(args):
     # Get edges and their types
     src, dst = train_g.edges()  # Get edge endpoints
     etypes = train_g.edata['rel']  # Get edge relation types
+    src = src.to(torch.long)
+    etypes = etypes.to(torch.long)
 
     # Assign outgoing relation features
     features[src, etypes] = 1  # Outgoing relations
@@ -36,7 +38,7 @@ def build_model_graph(args):
     # Assign the feature matrix to the graph
     train_g.ndata['feat'] = features
     numcluster = (int)( np.round( num_nodes*0.05) )
-    groupsOfnodes= clusterEntitiesKg(features, numcluster)
+    groupsOfnodes= clusterEntitiesKg(features, numcluster, args)
     ent_type = {ent : type for ent, type in enumerate(groupsOfnodes)}
     # print(ent_type)
     entity_type_triples ,inner_rel ,output_relations,input_relations = generate_group_triples_v1(triples,ent_type,args.num_rel)
@@ -70,13 +72,15 @@ def partitionNodeKmeans(features, best_k):
     print("Clustered Rows:", clusters)
     return clusters
 
-def clusterEntitiesKg(binary_matrix,num_clusters):
+def clusterEntitiesKg(binary_matrix,num_clusters, args):
    # Number of clusters (adjust as needed)
         
 
         # K-Modes clustering (Hamming similarity)
         km = KModes(n_clusters=num_clusters, init='Huang', n_init=5, verbose=1)
         clusters = km.fit_predict(binary_matrix)
+        with open(f"similarty_model_of_{args.data_name}.pkl", "wb") as f:
+            pickle.dump(km, f)
 
         return(clusters)
 
