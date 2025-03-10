@@ -5,6 +5,7 @@ import random
 import dgl 
 import torch
 import json
+import pandas as pd 
 import numpy as np
 from collections import defaultdict as ddict
 
@@ -192,7 +193,8 @@ def get_indtest_test_dataset_and_train_g(args):
 def get_ent_types(data, args):
     train_g = get_g(data['train'] + data['valid']
                     + data['test'])
-   
+    num_rel = len(np.unique(np.array(data['train'])[:, 1]))
+    print(f"number relation is {num_rel}")
     num_nodes = train_g.num_nodes()
     triples = torch.stack([train_g.edges()[0],
                                train_g.edata['rel'],
@@ -213,12 +215,22 @@ def get_ent_types(data, args):
     
     # Find unique rows and their indices
     # Step 3: Load the trained model
-    with open(f"similarty_model_of_{args.data_name}.pkl", "rb") as f:
-        km_loaded = pickle.load(f)
+    with open(f"unique_features_{args.data_name}.pkl", "rb") as f:
+        unique_rows = pickle.load(f)
 
-    # Step 4: Use the loaded model to predict clusters for new data (features2)
-    clusters = km_loaded.predict(features)
-    ent_type = {ent : type for ent, type in enumerate(clusters)}
+    unique_rows = torch.tensor(unique_rows, dtype=torch.float32)
+
+    # Find index of each row in `features` within `unique_rows`
+    _, feature_types = torch.unique(features, dim=0, return_inverse=True)
+
+    # `feature_types` now contains an integer type index for each row in `features`
+    print("Assigned Type Indices:", feature_types)
+    print(f"the size is of features  {features.shape}")
+    print(f"the size is of features  {len(feature_types)}")
+    # return
+    # groups = {i: np.where(indices == i)[0].tolist() for i in range(len(unique_rows))}
+    ent_type = {ent : type.item() for ent, type in enumerate(feature_types)}
+    print(f"the entity type is {ent_type}")
     return ent_type 
 def create__model_graph(triples):
      # Extract node and edge information

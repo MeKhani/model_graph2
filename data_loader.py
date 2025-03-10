@@ -27,14 +27,15 @@ def load_and_pre_processing_data(args):
 
      set_seed(args.seed)
 
-    # load original data and make index
      if not os.path.exists(args.data_path):
         data2pkl(args.data_name)
-     
+    # load original data and make index
      args.num_rel = get_num_rel(args)
-
      if not os.path.exists(args.data_model_graph):
          build_model_graph(args)
+     
+
+     
       
 
      if not os.path.exists(args.db_path):

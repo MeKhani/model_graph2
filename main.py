@@ -8,6 +8,7 @@ def main():
    
     model_graph= load_and_pre_processing_data(args)
     
+    # return
     model_trianer = Model_trainer(args, model_graph )
     model_trianer.train()
 
