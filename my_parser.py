@@ -3,9 +3,9 @@ import argparse
 def parse():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data_name', default='primekg')
-    parser.add_argument('--data_name', default='WN18RR_v3')
+    parser.add_argument('--data_name', default='WN18RR_v2')
 
-    parser.add_argument('--name', default='WN18RR_v3', type=str)
+    parser.add_argument('--name', default='WN18RR_v2', type=str)
     # parser.add_argument('--name', default='fb237_v1_transe', type=str)
 
     parser.add_argument('--step', default='meta_train', type=str, choices=['meta_train', 'fine_tune'])
@@ -30,15 +30,10 @@ def parse():
     parser.add_argument('--train_num_epoch', default=15)
     parser.add_argument('--metatrain_bs', default=64, type=int)
     parser.add_argument('--metatrain_lr', default=0.01, type=float)
-    parser.add_argument('--metatrain_check_per_step', default=50, type=int)
+    parser.add_argument('--metatrain_check_per_step', default=10, type=int)
     parser.add_argument('--indtest_eval_bs', default=512, type=int)
 
-    # params for fine-tune
-    parser.add_argument('--posttrain_num_neg', default=64, type=int)
-    parser.add_argument('--posttrain_bs', default=512, type=int)
-    parser.add_argument('--posttrain_lr', default=0.001, type=int)
-    parser.add_argument('--posttrain_num_epoch', default=10, type=int)
-    parser.add_argument('--posttrain_check_per_epoch', default=1, type=int)
+ 
 
     # params for R-GCN
     parser.add_argument('--num_layers', default=3, type=int)

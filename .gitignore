@@ -2,6 +2,7 @@ dataset/
 __pycache__/
 data/
 ckpt/
+state/
 
 
 # Ignore all log files

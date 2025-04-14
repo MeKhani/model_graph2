@@ -1,53 +1,84 @@
 
-from torch.utils.data import DataLoader
+from typing import Any, Tuple
+from torch.utils.data import DataLoader,Dataset
 from torch import optim
 import os
 import torch
 import torch.nn.functional as F
-from datasets import TrainSubgraphDataset, ValidSubgraphDataset
+from my_dataset import TrainSubgraphDataset, ValidSubgraphDataset
 from rgcn_model import RGCN
 from model import WeightedGraphAutoEncoder
 from ent_init_model import EntInit
 from kge_model import KGEModel
 from tools import get_g_bidir , write_evaluation_result,get_indtest_test_dataset_and_train_g
 from tqdm import tqdm
-from datasets import KGEEvalDataset
+from my_dataset import KGEEvalDataset
 import dgl
 from collections import defaultdict as ddict
 
-class Model_trainer:
-    def __init__(self, args, model_graph):
+class ModelTrainer:
+    """Trainer class for managing model training with subgraph datasets."""
+    
+    def __init__(self, args: Any, model_graph: Any) -> None:
+        """
+        Initialize the ModelTrainer with arguments and model graph.
         
-        train_subgraph_dataset = TrainSubgraphDataset(args)
-        valid_subgraph_dataset = ValidSubgraphDataset(args)
-        self.args =args 
+        Args:
+            args: Configuration object containing training parameters (e.g., gpu, state_dir, metatrain_bs).
+            model_graph: Graph structure for the model.
+        """
+        self.args = args
         self.name = args.name
         self.model_graph = model_graph
-# state dir
-        indtest_test_dataset, indtest_train_g,self.ind_ent_type = get_indtest_test_dataset_and_train_g(args)
-        self.indtest_train_g = indtest_train_g.to(args.gpu)
-        self.indtest_test_dataloader = DataLoader(indtest_test_dataset, batch_size=args.indtest_eval_bs,
-                                                  shuffle=False, collate_fn=KGEEvalDataset.collate_fn)
-        
+
+        # Initialize datasets
+        self.train_subgraph_dataloader = self._create_dataloader(
+            TrainSubgraphDataset(args), args.metatrain_bs, shuffle=True, 
+            collate_fn=TrainSubgraphDataset.collate_fn
+        )
+        self.valid_subgraph_dataloader = self._create_dataloader(
+            ValidSubgraphDataset(args), args.metatrain_bs, shuffle=False, 
+            collate_fn=ValidSubgraphDataset.collate_fn
+        )
+
+        # Inductive test datasets
+        indtest_test_dataset, indtest_train_g, self.ind_ent_type = get_indtest_test_dataset_and_train_g(args)
+        self.indtest_train_g = indtest_train_g.to(self.args.gpu)
+        self.indtest_test_dataloader = self._create_dataloader(
+            indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 
+            collate_fn=KGEEvalDataset.collate_fn
+        )
+
+        # State directory setup
         self.state_path = os.path.join(args.state_dir, self.name)
-        if not os.path.exists(self.state_path):
-            os.makedirs(self.state_path)
-        # self.ent_init,self.rgcn,self.kge_model = self.build_model()
-        self.model_g,self.rgcn,self.kge_model = self.build_model()
-        self.train_subgraph_dataloader = DataLoader(train_subgraph_dataset, batch_size=args.metatrain_bs,
-                                                    shuffle=True, collate_fn=TrainSubgraphDataset.collate_fn)
-        self.valid_subgraph_dataloader = DataLoader(valid_subgraph_dataset, batch_size=args.metatrain_bs,
-                                                shuffle=False, collate_fn=ValidSubgraphDataset.collate_fn)
-        self.optimizer = optim.Adam(list(self.model_g.parameters()) + list(self.rgcn.parameters())
-                                    + list(self.kge_model.parameters()), lr=args.metatrain_lr)
-    def build_model(self):
-            print(f"the args gpu is {self.args.gpu}")
-            # ent_init = EntInit(self.args).to(self.args.gpu)
-            model_g = WeightedGraphAutoEncoder(self.args)
-            rgcn = RGCN(self.args).to(self.args.gpu)
-            kge_model = KGEModel(self.args).to(self.args.gpu)
-            # return ent_init, rgcn, kge_model
-            return model_g, rgcn, kge_model
+        os.makedirs(self.state_path, exist_ok=True)  # More efficient than checking existence first
+
+        # Build and initialize models
+        self.model_g, self.rgcn, self.kge_model = self.build_model()
+        self.optimizer = optim.Adam(
+            list(self.model_g.parameters()) + list(self.rgcn.parameters()) + list(self.kge_model.parameters()), 
+            lr=args.metatrain_lr
+        )
+
+    def _create_dataloader(self, dataset: Dataset, batch_size: int, shuffle: bool, 
+                          collate_fn: Any) -> DataLoader:
+        """Helper method to create a DataLoader with consistent settings."""
+        return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, 
+                         collate_fn=collate_fn, num_workers=0, pin_memory=self.args.gpu == "cuda")
+
+    def build_model(self) -> Tuple[WeightedGraphAutoEncoder, RGCN, KGEModel]:
+        """
+        Build and initialize the models for training.
+        
+        Returns:
+            Tuple containing the graph autoencoder, RGCN, and KGE model.
+        """
+        print(f"Using device: {self.args.gpu}")
+        model_g = WeightedGraphAutoEncoder(self.args).to(self.args.gpu)
+        rgcn = RGCN(self.args).to(self.args.gpu)
+        kge_model = KGEModel(self.args).to(self.args.gpu)
+        return model_g, rgcn, kge_model
+   
     def train(self):
          write_evaluation_result("-" * 50+"\n" ,self.args)
          best_step = 0
