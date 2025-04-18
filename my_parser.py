@@ -5,6 +5,7 @@ def parse():
     # parser.add_argument('--data_name', default='primekg')
     parser.add_argument('--data_name', default='WN18RR_v2')
 
+    # parser.add_argument('--name', default='primekg', type=str)
     parser.add_argument('--name', default='WN18RR_v2', type=str)
     # parser.add_argument('--name', default='fb237_v1_transe', type=str)
 
@@ -27,7 +28,7 @@ def parse():
 
     # params for meta-train
     parser.add_argument('--metatrain_num_neg', default=32)
-    parser.add_argument('--train_num_epoch', default=15)
+    parser.add_argument('--train_num_epoch', default=2)
     parser.add_argument('--metatrain_bs', default=64, type=int)
     parser.add_argument('--metatrain_lr', default=0.01, type=float)
     parser.add_argument('--metatrain_check_per_step', default=10, type=int)
