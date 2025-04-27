@@ -48,7 +48,10 @@ class SubgraphDataset(Dataset):
             key = (r, t) if is_head else (h, r)
             exclude = mapping.get(key, [])
             valid_choices = np.delete(all_entities, exclude)
-            neg_samples[i] = np.random.choice(valid_choices, num_neg, replace=False)
+            if len(valid_choices)>=num_neg :
+                neg_samples[i] = np.random.choice(valid_choices, num_neg, replace=False)
+            else :
+                neg_samples[i] = np.random.choice(valid_choices, num_neg, replace=True)
         
         return neg_samples
 
@@ -87,23 +90,52 @@ class ValidSubgraphDataset(SubgraphDataset):
     def __init__(self, args: Any) -> None:
         super().__init__(args, "valid_subgraphs")
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, DataLoader]:
-        """Retrieve and process a validation subgraph."""
-        sup_tri, que_tri, hr2t, rt2h, ent_type = self._fetch_subgraph(idx)
-        
-        sup_tri = np.array(sup_tri)
-        nentity = len(np.unique(sup_tri[:, [0, 2]]))
-        
-        que_dataset = KGEEvalDataset(self.args, que_tri, nentity, hr2t, rt2h)
-        que_dataloader = DataLoader(que_dataset, batch_size=len(que_tri), 
-                                  collate_fn=KGEEvalDataset.collate_fn)
-        
-        ent_type_tensor = torch.tensor([[k, v] for k, v in ent_type.items()], dtype=torch.int64)
-        
-        return (torch.tensor(sup_tri, dtype=torch.int64),
-                ent_type_tensor,
-                que_dataloader)
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Retrieve and process a validation subgraph, returning all outputs as tensors.
 
+        Args:
+            idx (int): Index of the subgraph to fetch.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+                - Support triples tensor (shape: [N, 3], dtype: int64).
+                - Entity types tensor (shape: [M, 2], dtype: int64, [[entity, type]]).
+                - Query triples tensor (shape: [K, 3], dtype: int64).
+                - hr2t tensor (shape: [P, 3], dtype: int64, [[head, relation, tail]]).
+                - rt2h tensor (shape: [Q, 3], dtype: int64, [[relation, tail, head]]).
+
+        Raises:
+            ValueError: If the subgraph is empty or invalid.
+        """
+        sup_tri, que_tri, hr2t, rt2h, ent_type = self._fetch_subgraph(idx)
+
+        if not sup_tri or not que_tri:
+            raise ValueError(f"Empty subgraph at index {idx}")
+
+        # Convert support triples to tensor
+        sup_tri = np.array(sup_tri)
+        sup_tri_tensor = torch.tensor(sup_tri, dtype=torch.int64)
+
+        # Convert query triples to tensor
+        que_tri = np.array(que_tri)
+        que_tri_tensor = torch.tensor(que_tri, dtype=torch.int64)
+
+        # Convert entity types to tensor (key-value pairs as in original)
+        ent_type_tensor = torch.tensor([[k, v] for k, v in ent_type.items()], dtype=torch.int64)
+
+        # Convert hr2t to tensor: [[head, relation, tail], ...]
+         # Convert hr2t and rt2h dictionaries to tensors
+        hr2t_tensor = torch.tensor(
+            [[k[0], k[1], v] for k, v_list in hr2t.items() for v in v_list],
+            dtype=torch.int64
+        )
+        
+        rt2h_tensor = torch.tensor(
+            [[k[0], k[1], v] for k, v_list in rt2h.items() for v in v_list],
+            dtype=torch.int64)
+
+        return sup_tri_tensor, ent_type_tensor, que_tri_tensor, hr2t_tensor, rt2h_tensor
     @staticmethod
     def collate_fn(data):
         return data

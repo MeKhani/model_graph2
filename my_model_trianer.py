@@ -257,10 +257,12 @@ class ModelTrainer:
              1-Scoring all entities using the KGE model.
              2-Sorting these scores in descending order (higher score = better match).
              3-Finding the position (rank) of the true entity in this sorted list.
-             A realistic evaluation fairly reflects the model’s ability to rank the true entity against incorrect ones, aligning with the intended task of link prediction in KGE.
+             A realistic evaluation fairly reflects the model’s ability to rank the true entity against incorrect ones, 
+             aligning with the intended task of link prediction in KGE.
 
         Why It’s Realistic:
-            Filtered Setting: This approach follows the "filtered" evaluation protocol standard in KGE literature (e.g., TransE, Bordes et al., 2013). In this setting:
+            Filtered Setting: This approach follows the "filtered" evaluation 
+            protocol standard in KGE literature (e.g., TransE, Bordes et al., 2013). In this setting:
             All known true triples (from the knowledge graph) are excluded from ranking competition, 
             except the specific true entity being tested.
             This mimics the real-world task: given (h, r, ?), 
@@ -328,7 +330,32 @@ class ModelTrainer:
                 sup_g_list = dgl.unbatch(batch_sup_g)
 
                 for batch_i, data in enumerate(batch):
-                    que_dataloader = data[2]
+                    sup_tri_tensor, ent_type_tensor, que_tri_tensor, hr2t_tensor, rt2h_tensor =data
+
+                    # Move tensors to GPU
+                    sup_tri_tensor = sup_tri_tensor.to(self.args.gpu)
+                    ent_type_tensor = ent_type_tensor.to(self.args.gpu)
+                    que_tri_tensor = que_tri_tensor.to(self.args.gpu)
+                    hr2t_tensor = hr2t_tensor.to(self.args.gpu)  # Optional
+                    rt2h_tensor = rt2h_tensor.to(self.args.gpu)  # Optional
+
+                    # Reconstruct dictionaries
+                    hr2t = self.hr2t_tensor_to_dict(hr2t_tensor)
+                    rt2h = self.rt2h_tensor_to_dict(rt2h_tensor)
+                    # Compute nentity
+                    nentity = len(torch.unique(sup_tri_tensor[:, [0, 2]]))
+
+                    # Create que_dataset
+                    que_dataset = KGEEvalDataset(self.args, que_tri_tensor, nentity, hr2t, rt2h)
+
+                    # Create que_dataloader
+                    que_dataloader = DataLoader(
+                        que_dataset,
+                        batch_size=que_tri_tensor.shape[0],
+                        collate_fn=KGEEvalDataset.collate_fn,
+                        shuffle=False
+                    )
+                    # que_dataloader = data[2]
                     ent_emb = sup_g_list[batch_i].ndata['h']
                     results = self.evaluate(ent_emb, que_dataloader)
                     for k, v in results.items():
@@ -365,7 +392,42 @@ class ModelTrainer:
                 "test_on": "ind-test-graph", "num_cand": num_cand, "mrr": results['mrr'],
                 "hits@1": results['hits@1'], "hits@5": results['hits@5'], "hits@10": results['hits@10']
             }
-            write_evaluation_result("-" * 50 + "\n", self.args, type="test")
-            write_evaluation_result(result_dict, self.args, type="test")
+            # kgu.luation_result("-" * 50 + "\n", self.args, type="test")
+            kgu.write_results(result_dict, self.args.save_result,self.args)
             print(result_str)
             return results
+
+    def hr2t_tensor_to_dict(self,hr2t_tensor: torch.Tensor) -> dict:
+        """Convert flattened (h,r,t) tensor back to hr2t dictionary.
+        Args:
+            hr2t_tensor: Shape [N, 3] where each row is (h, r, t)
+        Returns:
+            {(h,r): [t1, t2, ...]}
+        """
+        # Group by (h,r) pairs and collect tails
+        hr2t_dict = ddict(list)
+        if hr2t_tensor.numel() > 0:  # Handle empty tensor case
+            # Convert to numpy for easier grouping (or use torch_scatter if on GPU)
+            h_r = hr2t_tensor[:, :2].numpy()
+            t = hr2t_tensor[:, 2].numpy()
+            
+            # Create dictionary using vectorized operations
+            for (h, r), t_val in zip(map(tuple, h_r), t):
+                hr2t_dict[(h, r)].append(t_val)
+        return hr2t_dict
+
+    def rt2h_tensor_to_dict(self,rt2h_tensor: torch.Tensor) -> dict:
+        """Convert flattened (r,t,h) tensor back to rt2h dictionary.
+        Args:
+            rt2h_tensor: Shape [N, 3] where each row is (r, t, h)
+        Returns:
+            {(r,t): [h1, h2, ...]}
+        """
+        rt2h_dict = ddict(list)
+        if rt2h_tensor.numel() > 0:
+            r_t = rt2h_tensor[:, :2].numpy()
+            h = rt2h_tensor[:, 2].numpy()
+            
+            for (r, t), h_val in zip(map(tuple, r_t), h):
+                rt2h_dict[(r, t)].append(h_val)
+        return rt2h_dict
