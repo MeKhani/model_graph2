@@ -3,7 +3,7 @@ import pickle
 import os 
 import pandas as pd
 from sklearn.model_selection import train_test_split
-def data2pkl(data_name):
+def data2pkl(data_name ):
 
     
     if "primekg" not in data_name:
@@ -26,28 +26,33 @@ def data2pkl(data_name):
         train_tri, fix_rel_reidx, ent_reidx = reidx(train_tri)
         valid_tri = reidx_withr_ande(valid_tri, fix_rel_reidx, ent_reidx)
         test_tri = reidx_withr_ande(test_tri, fix_rel_reidx, ent_reidx)
+        if "kgc" not in  data_name : 
 
+            file = open('dataset/{}_ind/train.txt'.format(data_name))
+            ind_train_tri = ([l.strip().split() for l in file.readlines()])
+            file.close()
 
-        file = open('dataset/{}_ind/train.txt'.format(data_name))
-        ind_train_tri = ([l.strip().split() for l in file.readlines()])
-        file.close()
+            file = open('dataset/{}_ind/valid.txt'.format(data_name))
+            ind_valid_tri = ([l.strip().split() for l in file.readlines()])
+            file.close()
 
-        file = open('dataset/{}_ind/valid.txt'.format(data_name))
-        ind_valid_tri = ([l.strip().split() for l in file.readlines()])
-        file.close()
+            file = open('dataset/{}_ind/test.txt'.format(data_name))
+            ind_test_tri = ([l.strip().split() for l in file.readlines()])
+            file.close()
 
-        file = open('dataset/{}_ind/test.txt'.format(data_name))
-        ind_test_tri = ([l.strip().split() for l in file.readlines()])
-        file.close()
+            test_train_tri, ent_reidx_ind = reidx_withr(ind_train_tri, fix_rel_reidx)
+            test_valid_tri = reidx_withr_ande(ind_valid_tri, fix_rel_reidx, ent_reidx_ind)
+            test_test_tri = reidx_withr_ande(ind_test_tri, fix_rel_reidx, ent_reidx_ind)
 
-        test_train_tri, ent_reidx_ind = reidx_withr(ind_train_tri, fix_rel_reidx)
-        test_valid_tri = reidx_withr_ande(ind_valid_tri, fix_rel_reidx, ent_reidx_ind)
-        test_test_tri = reidx_withr_ande(ind_test_tri, fix_rel_reidx, ent_reidx_ind)
+            save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri, 'test': test_tri},
+                        'ind_test_graph': {'train': test_train_tri, 'valid': test_valid_tri, 'test': test_test_tri}}
 
-        save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri, 'test': test_tri},
-                    'ind_test_graph': {'train': test_train_tri, 'valid': test_valid_tri, 'test': test_test_tri}}
+            pickle.dump(save_data, open(f'./dataset/{data_name}.pkl', 'wb'))
+        else:
+            save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri, 'test': test_tri}}
 
-        pickle.dump(save_data, open(f'./dataset/{data_name}.pkl', 'wb'))
+            pickle.dump(save_data, open(f'./dataset/{data_name}.pkl', 'wb'))
+
     else:
         
         print(f"the data set name is {data_name}/{data_name}")
@@ -112,9 +117,16 @@ def reidx_withr(tri, rel_reidx):
 
 
 def reidx_withr_ande(tri, rel_reidx, ent_reidx):
+    count = 0
     tri_reidx = []
     for h, r, t in tri:
+        if h not in  ent_reidx or t not in ent_reidx:
+            count +=1 
+            continue
+
         tri_reidx.append([ent_reidx[h], rel_reidx[r], ent_reidx[t]])
+
+    print(f"the number of entit not in valdiation is { count }")
     return tri_reidx
 def get_triples(data_df):
     ent_type_id = {etype: idx for idx, etype in enumerate(data_df["x_type"].unique())}

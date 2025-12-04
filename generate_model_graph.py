@@ -69,7 +69,14 @@ def build_model_graph(args) -> None:
     
     # Build and enhance model graph
     # model_graph = get_g(list(entity_type_triples))
-    model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight")
+    if args.is_wieghted_model_graph :
+        model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight")
+    else:
+        model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight", is_weighted=False)
+    if not args.is_directed_model_graph:
+        model_graph = kgu.undirected_graph(model_graph)
+
+
     # model_graph = add_feature_to_model_graph_nodes(
     #     model_graph, inner_rel, output_relations, input_relations, args.num_rel
     # )
@@ -78,6 +85,7 @@ def build_model_graph(args) -> None:
     )
     
     print(f"the model graph is {model_graph}")
+    # print(f"the model graph edges are  {model_graph.edata}")
    
     
     # Prepare and save final data

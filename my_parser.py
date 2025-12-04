@@ -3,10 +3,10 @@ import argparse
 def parse():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data_name', default='primekg')
-    parser.add_argument('--data_name', default='WN18RR_v2')
+    parser.add_argument('--data_name', default='fb237_v1')
 
     # parser.add_argument('--name', default='primekg', type=str)
-    parser.add_argument('--name', default='WN18RR_v2', type=str)
+    parser.add_argument('--name', default='fb237_v1', type=str)
     # parser.add_argument('--name', default='fb237_v1_transe', type=str)
 
     parser.add_argument('--step', default='meta_train', type=str, choices=['meta_train', 'fine_tune'])
@@ -28,11 +28,13 @@ def parse():
 
 
     # params for meta-train
-    parser.add_argument('--metatrain_num_neg', default=32)
-    parser.add_argument('--train_num_epoch', default=2)
-    parser.add_argument('--metatrain_bs', default=64, type=int)
-    parser.add_argument('--metatrain_lr', default=0.01, type=float)
-    parser.add_argument('--metatrain_check_per_step', default=3, type=int)
+    parser.add_argument('--num_neg', default=32)
+    parser.add_argument('--train_num_epoch', default=3)
+    parser.add_argument('--posttrain_num_epoch', default=50)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--lr', default=0.01, type=float)
+    parser.add_argument('--metatrain_check_per_step', default=314, type=int)
+    parser.add_argument('--posttrain_check_per_epoch', default=314, type=int)
     parser.add_argument('--indtest_eval_bs', default=512, type=int)
 
  
@@ -49,5 +51,14 @@ def parse():
 
     parser.add_argument('--gpu', default='cuda:0', type=str)
     parser.add_argument('--seed', default=1234, type=int)
+
+    # model graph parametter 
+    parser.add_argument('--is_wieghted_model_graph', default=False, type=bool)
+    parser.add_argument('--is_directed_model_graph', default=False, type=bool)
+    #task 
+    parser.add_argument('--task', default='inductve', type=str, choices=['inductve', 'transductive'])
+
+
+
     args = parser.parse_args()
     return args 

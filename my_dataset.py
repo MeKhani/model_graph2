@@ -4,7 +4,7 @@ import numpy as np
 import lmdb
 from torch.utils.data import Dataset, DataLoader
 # from tools import deserialize
-from kg_utiles import KnowledgeGraphUtils as kgu
+import kg_utiles
 
 
 class SubgraphDataset(Dataset):
@@ -35,7 +35,7 @@ class SubgraphDataset(Dataset):
         """Fetch a single subgraph from LMDB."""
         with self.env.begin(db=self.subgraphs_db) as txn:
             str_id = f"{idx:08}".encode('ascii')
-            return kgu.deserialize(txn.get(str_id))
+            return kg_utiles.KnowledgeGraphUtils.deserialize(txn.get(str_id))
 
     @staticmethod
     def _sample_negatives(triples: np.ndarray, mapping: Dict[Tuple[int, int], List[int]], 
@@ -69,8 +69,8 @@ class TrainSubgraphDataset(SubgraphDataset):
         que_tri = np.array(que_tri)
         nentity = len(np.unique(sup_tri[:, [0, 2]]))
         
-        neg_tail_ent = self._sample_negatives(que_tri, hr2t, nentity, self.args.metatrain_num_neg)
-        neg_head_ent = self._sample_negatives(que_tri, rt2h, nentity, self.args.metatrain_num_neg, is_head=True)
+        neg_tail_ent = self._sample_negatives(que_tri, hr2t, nentity, self.args.num_neg)
+        neg_head_ent = self._sample_negatives(que_tri, rt2h, nentity, self.args.num_neg, is_head=True)
         
         ent_type_tensor = torch.tensor([[k, v] for k, v in ent_type.items()], dtype=torch.int64)
         

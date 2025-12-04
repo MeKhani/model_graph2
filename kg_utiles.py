@@ -8,6 +8,7 @@ import numpy as np
 from collections import defaultdict
 from typing import List, Tuple, Dict, Set, Any, Optional
 from pathlib import Path
+from my_dataset import KGEEvalDataset,KGETrainDataset
 
 class KnowledgeGraphUtils:
     """Utilities for creating and manipulating knowledge graphs with DGL."""
@@ -36,9 +37,12 @@ class KnowledgeGraphUtils:
             return pickle.loads(data)
         except pickle.UnpicklingError as e:
             raise ValueError(f"Failed to deserialize data: {e}")
+    @staticmethod
+    def undirected_graph(hetro_graph:dgl.DGLGraph) -> dgl.DGLGraph :
+        return dgl.add_reverse_edges(hetro_graph)
 
     @staticmethod
-    def create_directed_graph(triples: np.ndarray, edge_key: str = "rel") -> dgl.DGLGraph:
+    def create_directed_graph(triples: np.ndarray, edge_key: str = "rel", is_weighted = True) -> dgl.DGLGraph:
         """Create a directed DGL graph from triples.
 
         Args:
@@ -51,7 +55,10 @@ class KnowledgeGraphUtils:
         if triples.shape[1] != 3:
             raise ValueError("Triples must have shape (N, 3)")
         g = dgl.graph((triples[:, 0], triples[:, 2]))
-        g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
+        if is_weighted :
+            g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
+        else:
+            g.edata[edge_key]= torch.ones(g.num_edges(),1)
         return g
 
     @staticmethod
@@ -226,7 +233,6 @@ class KnowledgeGraphUtils:
         Returns:
             Tuple of (test_dataset, training_graph, entity_types).
         """
-        from my_dataset import KGEEvalDataset  # Import here to avoid circular imports
 
         try:
             with open(args.data_path, 'rb') as f:
@@ -246,28 +252,81 @@ class KnowledgeGraphUtils:
 
         return test_dataset, training_graph, entity_types
 
+   
+    # @staticmethod
+    # def get_entity_types(data: Dict, args: Any) -> Dict[int, int]:
+    #     """
+    #     Assign type indices to entities based on relation patterns.
+
+    #     Args:
+    #         data: Dictionary with 'train', 'valid', 'test' triples.
+    #         args: Object with num_rel and unique_features_for_model_graph attributes.
+
+    #     Returns:
+    #         Dictionary mapping each entity (node) to its type index.
+    #     """
+    #     # Collect all triples from train/valid/test
+    #     all_triples = np.array(data['train'] + data['valid'] + data['test'])
+
+    #     # Build directed graph
+    #     graph = KnowledgeGraphUtils.create_directed_graph(all_triples)
+    #     num_nodes = graph.num_nodes()
+
+    #     # Prepare features: one-hot for outgoing and incoming relations
+    #     features = torch.zeros(num_nodes, 2 * args.num_rel, dtype=torch.float)
+    #     src, dst = graph.edges()
+    #     etypes = graph.edata['rel'].to(torch.long)
+    #     features[src, etypes] = 1
+    #     features[dst, etypes + args.num_rel] = 1
+
+    #     # Load precomputed unique feature rows
+    #     try:
+    #         with open(args.unique_features_for_model_graph, 'rb') as f:
+    #             unique_rows = pickle.load(f)
+    #     except FileNotFoundError as e:
+    #         raise ValueError(f"Unique features file not found: {e}")
+
+    #     unique_rows = torch.tensor(unique_rows, dtype=torch.float)
+
+    #     # ---- Vectorized matching ----
+    #     # Compare each feature with all unique rows at once
+    #     # (num_nodes, num_features) vs (num_unique, num_features)
+    #     matches = (features[:, None, :] == unique_rows[None, :, :]).all(dim=2)  
+    #     # matches[i, j] == True if node i’s feature == unique_rows[j]
+
+    #     # Convert boolean matrix to type indices
+    #     feature_types = matches.float().argmax(dim=1)
+
+    #     return {i: t.item() for i, t in enumerate(feature_types)}
     @staticmethod
     def get_entity_types(data: Dict, args: Any) -> Dict[int, int]:
-        """Assign type indices to entities based on relation patterns.
+        """
+        Assign type indices to entities based on relation patterns.
+        If a node's feature row is not found in the unique set, 
+        assign it the closest unique row (by Hamming distance).
 
         Args:
             data: Dictionary with 'train', 'valid', 'test' triples.
             args: Object with num_rel and unique_features_for_model_graph attributes.
 
         Returns:
-            Dictionary mapping entities to type indices.
+            Dictionary mapping each entity (node) to its type index.
         """
+        # Collect all triples from train/valid/test
         all_triples = np.array(data['train'] + data['valid'] + data['test'])
+
+        # Build directed graph
         graph = KnowledgeGraphUtils.create_directed_graph(all_triples)
         num_nodes = graph.num_nodes()
-        num_rel = len(np.unique(all_triples[:, 1]))
 
+        # Prepare features: one-hot for outgoing and incoming relations
         features = torch.zeros(num_nodes, 2 * args.num_rel, dtype=torch.float)
         src, dst = graph.edges()
         etypes = graph.edata['rel'].to(torch.long)
         features[src, etypes] = 1
         features[dst, etypes + args.num_rel] = 1
 
+        # Load precomputed unique feature rows
         try:
             with open(args.unique_features_for_model_graph, 'rb') as f:
                 unique_rows = pickle.load(f)
@@ -275,8 +334,32 @@ class KnowledgeGraphUtils:
             raise ValueError(f"Unique features file not found: {e}")
 
         unique_rows = torch.tensor(unique_rows, dtype=torch.float)
-        _, feature_types = torch.unique(features, dim=0, return_inverse=True)
+
+        # ---- Matching ----
+        # Boolean exact match
+        matches = (features[:, None, :] == unique_rows[None, :, :]).all(dim=2)  
+        has_match = matches.any(dim=1)
+
+        # Assign indices for exact matches
+        exact_indices = matches.float().argmax(dim=1)
+
+        # ---- Handle "no match" case ----
+        # Compute distance matrix: (num_nodes, num_unique)
+        # Using L1 distance (Hamming for binary)
+        dist = torch.cdist(features, unique_rows, p=1)
+
+        print(f"the exat index  {exact_indices}")
+        print(f"the exact index  {exact_indices.shape }")
+        print(f"the feature size   {features.shape }")
+
+        # Closest unique row index for each node
+        closest_indices = dist.argmin(dim=1)
+        # Final assignment: use exact if exists, else closest
+        feature_types = torch.where(has_match, exact_indices, closest_indices)
+        print(f"the features type {feature_types}")
         return {i: t.item() for i, t in enumerate(feature_types)}
+
+
 
     @staticmethod
     def create_model_graph(triples: List[Tuple[int, float, int]]) -> dgl.DGLGraph:
@@ -297,3 +380,17 @@ class KnowledgeGraphUtils:
         })
         graph.edata['weight'] = torch.tensor(weights, dtype=torch.float)
         return graph
+    @staticmethod
+    def get_posttrain_train_valid_dataset(args):
+        data = pickle.load(open(args.data_path, 'rb'))['ind_test_graph']
+        num_ent = len(np.unique(np.array(data['train'])[:, [0, 2]]))
+        # hr2t, rt2h = get_hr2t_rt2h(data['train'])
+        hr2t, rt2h = KnowledgeGraphUtils.map_head_relation_to_tail(data['train'])
+
+
+        train_dataset = KGETrainDataset(args, data['train'],
+                                        num_ent, args.num_neg, hr2t, rt2h)
+
+        valid_dataset = KGEEvalDataset(args, data['valid'], num_ent, hr2t, rt2h)
+
+        return train_dataset, valid_dataset

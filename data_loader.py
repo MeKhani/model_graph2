@@ -7,9 +7,14 @@ from subgraph_genrator import gen_subgraph_datasets
 from kg_utiles import KnowledgeGraphUtils as kgu
 import pickle
 import numpy as np
+import re
 
 
 def load_and_pre_processing_data(args):
+     if args.task in ['transductive']:
+        args.data_name ="/kgc/"+re.sub(r"_v.*","",args.data_name)
+        
+     print(f"the data set is {args.name }")
      args.ent_dim = args.emb_dim
      args.rel_dim = args.emb_dim
      args.gpu = "cuda" if  torch.cuda.is_available() else "cpu"
@@ -22,9 +27,11 @@ def load_and_pre_processing_data(args):
      args.data_model_graph = f'./dataset/{args.data_name}_model_graph.pkl'
      args.unique_features_for_model_graph = f"dataset/unique_features_{args.data_name}.pkl"
      args.db_path = f'dataset/{args.data_name}_subgraph'
-     args.save_result= f"E:/phd/semester-5/results/{args.data_name}/result.json"
+     args.save_result= f"../../results/{args.data_name}/"
      if not os.path.exists(args.save_result):
         os.makedirs(args.save_result)
+     if not os.path.exists(args.unique_features_for_model_graph):
+        os.makedirs(args.unique_features_for_model_graph.replace(args.unique_features_for_model_graph.split("/")[-1],""))
 
      kgu.set_seed(args.seed)
 
@@ -32,8 +39,8 @@ def load_and_pre_processing_data(args):
         data2pkl(args.data_name)
     # load original data and make index
      args.num_rel = kgu.get_num_relations(args.data_path)
-     if not os.path.exists(args.data_model_graph):
-         build_model_graph(args)
+   #   if not os.path.exists(args.data_model_graph):
+     build_model_graph(args)
      
 
      

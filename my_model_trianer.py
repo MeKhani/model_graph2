@@ -14,6 +14,7 @@ from tqdm import tqdm
 from my_dataset import KGEEvalDataset
 import dgl
 import numpy as np
+import shutil
 from collections import defaultdict as ddict
 
 class ModelTrainer:
@@ -24,7 +25,8 @@ class ModelTrainer:
         Initialize the ModelTrainer with arguments and model graph.
         
         Args:
-            args: Configuration object containing training parameters (e.g., gpu, state_dir, metatrain_bs).
+            args: Configuration object containing training parameters (e.g., gpu, state_dir, batch_size
+            ).
             model_graph: Graph structure for the model.
         """
         """
@@ -36,22 +38,25 @@ class ModelTrainer:
 
         # Initialize datasets
         self.train_subgraph_dataloader = self._create_dataloader(
-            TrainSubgraphDataset(args), args.metatrain_bs, shuffle=True, 
+            TrainSubgraphDataset(args), args.batch_size
+            , shuffle=True, 
             collate_fn=TrainSubgraphDataset.collate_fn
         )
         self.valid_subgraph_dataloader = self._create_dataloader(
-            ValidSubgraphDataset(args), args.metatrain_bs, shuffle=False, 
+            ValidSubgraphDataset(args), args.batch_size
+            , shuffle=False, 
             collate_fn=ValidSubgraphDataset.collate_fn
         )
 
         # Inductive test datasets
         # indtest_test_dataset, indtest_train_g, self.ind_ent_type = get_indtest_test_dataset_and_train_g(args)
-        indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data(args)
-        self.indtest_train_g = indtest_train_g.to(self.args.gpu)
-        self.indtest_test_dataloader = self._create_dataloader(
-            indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 
-            collate_fn=KGEEvalDataset.collate_fn
-        )
+        if args.task =="inductve":
+            indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data(args)
+            self.indtest_train_g = indtest_train_g.to(self.args.gpu)
+            self.indtest_test_dataloader = self._create_dataloader(
+                indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 
+                collate_fn=KGEEvalDataset.collate_fn
+            )
 
         # State directory setup
         self.state_path = os.path.join(args.state_dir, self.name)
@@ -61,7 +66,7 @@ class ModelTrainer:
         self.model_g, self.rgcn, self.kge_model = self.build_model()
         self.optimizer = optim.Adam(
             list(self.model_g.parameters()) + list(self.rgcn.parameters()) + list(self.kge_model.parameters()), 
-            lr=args.metatrain_lr
+            lr=args.lr
         )
 
     def _create_dataloader(self, dataset: Dataset, batch_size: int, shuffle: bool, 
@@ -87,7 +92,7 @@ class ModelTrainer:
         # kgu.write_results("-" * 50 + "\n", self.args)
         
         best_step = 0
-        best_eval_rst = {'mrr': 0.0, 'hits@1': 0.0, 'hits@5': 0.0, 'hits@10': 0.0}
+        best_eval_rst = {'mrr': 0.0, 'hits@1': 0.0, 'hits@3': 0.0, 'hits@5': 0.0, 'hits@10': 0.0}
         bad_count = 0
         global_step = 0
         
@@ -127,6 +132,7 @@ class ModelTrainer:
                         best_step = global_step
                         self.save_checkpoint(global_step)
                         bad_count = 0
+                        print("find best result")
                     else:
                         bad_count += 1
                     
@@ -159,6 +165,7 @@ class ModelTrainer:
             'rgcn': self.rgcn.state_dict(),
             'kge_model': self.kge_model.state_dict()
         }
+        print(f"the step to save {step}")
         checkpoint_path = os.path.join(self.state_path, f"{self.name}.{step}.ckpt")
         
         # Remove previous checkpoints efficiently
@@ -168,12 +175,20 @@ class ModelTrainer:
         
         torch.save(state, checkpoint_path)
 
-    def save_model(self, best_step: int) -> None:
-        """Rename the best checkpoint as the final model."""
-        old_path = os.path.join(self.state_path, f"{self.name}.{best_step}.ckpt")
-        new_path = os.path.join(self.state_path, f"{self.name}.best")
-        if os.path.exists(old_path):
+    def save_model(self, step):
+        old_path = f'./state/{self.name}/{self.name}.{step}.ckpt'
+        new_path = f'./state/{self.name}/{self.name}.best'
+        
+        try:
+            # Remove if exists, then rename
+            if os.path.exists(new_path):
+                os.remove(new_path)
             os.rename(old_path, new_path)
+            print(f"Model saved as best: {new_path}")
+        except Exception as e:
+            print(f"Error saving model: {e}")
+            # Fallback: copy instead of move
+            shutil.copy2(old_path, new_path)
 
     def get_embedding_from_model_graph(self) -> torch.Tensor:
         """Generate embeddings from the model graph."""
@@ -243,7 +258,7 @@ class ModelTrainer:
             count += ranks.numel()
             results['mr'] += ranks.sum().item()
             results['mrr'] += (1.0 / ranks).sum().item()
-            for k in [1, 5, 10]:
+            for k in [1,3, 5, 10]:
                 results[f'hits@{k}'] += (ranks <= k).sum().item()
 
         return {k: v / count for k, v in results.items()}
@@ -386,11 +401,12 @@ class ModelTrainer:
             result_str = (
                 f"Test on ind-test-graph, num_cand: {num_cand}, "
                 f"mrr: {results['mrr']:.4f}, hits@1: {results['hits@1']:.4f}, "
+                f" hits@3: {results['hits@3']:.4f}, "
                 f"hits@5: {results['hits@5']:.4f}, hits@10: {results['hits@10']:.4f}"
             )
             result_dict = {
                 "test_on": "ind-test-graph", "num_cand": num_cand, "mrr": results['mrr'],
-                "hits@1": results['hits@1'], "hits@5": results['hits@5'], "hits@10": results['hits@10']
+                "hits@1": results['hits@1'],"hits@3": results['hits@3'], "hits@5": results['hits@5'], "hits@10": results['hits@10']
             }
             # kgu.luation_result("-" * 50 + "\n", self.args, type="test")
             kgu.write_results(result_dict, self.args.save_result,self.args)

@@ -2,6 +2,7 @@
 from my_parser import parse
 from data_loader import load_and_pre_processing_data
 from my_model_trianer import ModelTrainer
+from post_trainer import PostTrainer
 
 def main():
     args  = parse()
@@ -10,6 +11,8 @@ def main():
     # return
     model_trianer = ModelTrainer(args, model_graph )
     model_trianer.train()
+    # post_train= PostTrainer(args,model_graph)
+    # post_train.train()
 
 
 main()
