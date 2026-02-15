@@ -18,8 +18,12 @@ def gen_subgraph_datasets(args):
     _, ent_type = model_data['model_graph']['triples'],model_data['model_graph']['ent_type']
     # train_g = get_g(data['train_graph']['train'] + data['train_graph']['valid']
     #                 + data['train_graph']['test'])
-    train_g = kgu.create_directed_graph(np.array(data['train_graph']['train'] + data['train_graph']['valid']
+    if args.new_data=="old":
+        train_g = kgu.create_directed_graph(np.array(data['train_graph']['train'] + data['train_graph']['valid']
                     + data['train_graph']['test']))
+    else:
+        train_g = kgu.create_directed_graph(np.array(data['train_graph']['train'] + data['train_graph']['valid']))
+        
 
     BYTES_PER_DATUM = get_average_subgraph_size(args, args.num_sample_for_estimate_size, train_g,ent_type) * 2
     map_size = (args.num_train_subgraph + args.num_valid_subgraph) * BYTES_PER_DATUM

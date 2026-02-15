@@ -2,12 +2,45 @@
 import pickle
 import os 
 import pandas as pd
-from sklearn.model_selection import train_test_split
-def data2pkl(data_name ):
+# from sklearn.model_selection import train_test_split
+def data2pkl(data_name,args ):
+
+
+    if args.new_data=="new":
+        train_tri = []
+        file = open('dataset/new_data/{}/train_graph.txt'.format(data_name))
+        train_tri.extend([l.strip().split() for l in file.readlines()])
+        file.close()
+
+        valid_tri = []
+        file = open('dataset/new_data/{}/valid_samples.txt'.format(data_name))
+        valid_tri.extend([l.strip().split() for l in file.readlines()])
+        file.close()
+
+
+        train_tri, fix_rel_reidx, ent_reidx = reidx(train_tri)
+        valid_tri = reidx_withr_ande(valid_tri, fix_rel_reidx, ent_reidx)
+
+        file = open('dataset/new_data/{}/test_0_graph.txt'.format(data_name))
+        ind_train_tri = ([l.strip().split() for l in file.readlines()])
+        file.close()
+
+        file = open('dataset/new_data/{}/test_0_graph.txt'.format(data_name))
+        test_valid_tri = ([l.strip().split() for l in file.readlines()])
+        file.close()
+
+       
+        save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri},
+                    'ind_test_graph': {'train': ind_train_tri, 'test': test_valid_tri}}
+
+        pickle.dump(save_data, open(f'./dataset/new_data/{data_name}.pkl', 'wb'))
+        return 
 
     
+    
     if "primekg" not in data_name:
-
+        
+        
         train_tri = []
         file = open('dataset/{}/train.txt'.format(data_name))
         train_tri.extend([l.strip().split() for l in file.readlines()])

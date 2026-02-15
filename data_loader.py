@@ -13,6 +13,11 @@ import re
 def load_and_pre_processing_data(args):
      if args.task in ['transductive']:
         args.data_name ="/kgc/"+re.sub(r"_v.*","",args.data_name)
+     if args.new_data=='new':
+        root_data = "dataset/new_data"
+     elif(args.new_data=='old'):
+        root_data = "dataset"
+      
         
      print(f"the data set is {args.name }")
      args.ent_dim = args.emb_dim
@@ -23,24 +28,25 @@ def load_and_pre_processing_data(args):
      if args.kge in ['ComplEx']:
         args.rel_dim = args.emb_dim * 2
     # specify the paths for original data and subgraph db
-     args.data_path = f'dataset/{args.data_name}.pkl'
-     args.data_model_graph = f'./dataset/{args.data_name}_model_graph.pkl'
-     args.unique_features_for_model_graph = f"dataset/unique_features_{args.data_name}.pkl"
-     args.db_path = f'dataset/{args.data_name}_subgraph'
+     args.data_path = f'{root_data}/{args.data_name}.pkl'
+     args.data_model_graph = f'./{root_data}/{args.data_name}_model_graph.pkl'
+     args.unique_features_for_model_graph = f"{root_data}/unique_features/unique_features_{args.data_name}.pkl"
+     args.db_path = f'{root_data}/{args.data_name}_subgraph'
      args.save_result= f"../../results/{args.data_name}/"
      if not os.path.exists(args.save_result):
         os.makedirs(args.save_result)
-     if not os.path.exists(args.unique_features_for_model_graph):
+     if not os.path.exists(args.unique_features_for_model_graph.replace(args.unique_features_for_model_graph.split("/")[-1],"")):
         os.makedirs(args.unique_features_for_model_graph.replace(args.unique_features_for_model_graph.split("/")[-1],""))
 
      kgu.set_seed(args.seed)
 
      if not os.path.exists(args.data_path):
-        data2pkl(args.data_name)
+        data2pkl(args.data_name,args)
     # load original data and make index
      args.num_rel = kgu.get_num_relations(args.data_path)
    #   if not os.path.exists(args.data_model_graph):
      build_model_graph(args)
+   #   build_model_graph_by_data_set(args)
      
 
      
