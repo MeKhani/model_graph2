@@ -5,7 +5,7 @@ import dgl
 import torch
 import json
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict,Counter
 from typing import List, Tuple, Dict, Set, Any, Optional
 from pathlib import Path
 from my_dataset import KGEEvalDataset,KGETrainDataset
@@ -59,6 +59,28 @@ class KnowledgeGraphUtils:
             g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
         else:
             g.edata[edge_key]= torch.ones(g.num_edges(),1)
+        return g
+        
+    @staticmethod
+    def create_directed_graph_en_model(triples: np.ndarray, edge_key: str = "rel", is_weighted = True) -> dgl.DGLGraph:
+        """Create a directed DGL graph from triples.
+
+        Args:
+            triples: Array of shape (N, 3) with [head, relation, tail].
+            edge_key: Name for edge data storing relations.
+
+        Returns:
+            DGL graph with edges head→tail and relations in edata[edge_key].
+        """
+        if triples.shape[1] != 4:
+            raise ValueError("Triples must have shape (N, 4)")
+        g = dgl.graph((triples[:, 0], triples[:, 2]))
+        # if is_weighted :
+        #     g.edata["rel"] = torch.tensor(triples[:, 1], dtype=torch.float32)
+        #     g.edata["weight"] = torch.tensor(triples[:, 3], dtype=torch.float32)
+        # else:
+        #     g.edata["weight"] = torch.tensor(triples[:, 3], dtype=torch.float32)
+        #     g.edata["rel"] = torch.tensor(triples[:, 1], dtype=torch.float32)
         return g
 
     @staticmethod
@@ -189,6 +211,72 @@ class KnowledgeGraphUtils:
         triples_list = [[k1, score, k2] for k1, score, k2 in group_triples]
         ndarray_grouptriples=  np.array(triples_list, dtype=np.float64)
         return ndarray_grouptriples, inner_rels, out_rels, in_rels
+    @staticmethod
+    def generate_group_triples_by_for_hito(
+    triples: np.ndarray,
+    entity_types: Dict[int, int],
+    num_rel: int,
+    rel_weight: Dict[int, float] = None,          # optional: per-relation importance
+) -> Tuple[np.ndarray, Dict[int, Set[int]], Dict[int, Set[int]], Dict[int, Set[int]]]:
+        """
+    Now produces one triple per (group1, relation_type, group2) with its weight.
+    """
+        
+        if rel_weight is None:
+            rel_weight = {}  # fallback → uniform weight 1.0
+
+        group_rels = defaultdict(list)          # (k1,k2) → list of all rel ids
+        inner_rels = defaultdict(set)
+        out_rels   = defaultdict(set)
+        in_rels    = defaultdict(set)
+
+        for e1, rel, e2 in triples:
+            k1 = entity_types.get(e1)
+            k2 = entity_types.get(e2)
+            if k1 is None or k2 is None:
+                continue
+
+            if k1 != k2:
+                group_rels[(k1, k2)].append(rel)
+                out_rels[k1].add(rel)
+                in_rels[k2].add(rel)
+            else:
+                inner_rels[k1].add(rel)
+
+        # ── Changed: now per relation type ────────────────────────────────
+        group_triples: List[List[float]] = []
+
+        for (k1, k2), rels_list in group_rels.items():
+            if not rels_list:
+                continue
+
+            # Count how many times each relation appears between k1 → k2
+            rel_counts = Counter(rels_list)
+
+            total_edges_between = len(rels_list)
+
+            for r, count in rel_counts.items():
+                # Choose your preferred weight calculation:
+                # Option A: simple count
+                # w = count
+
+                # Option B: most common normalized version
+                w = count / len(rels_list)
+
+                # Option C: count × global relation importance
+                # w = count * rel_weight.get(r, 1.0)
+
+                # Option D: fraction of edges between these groups that use this relation
+                # w = count / total_edges_between if total_edges_between > 0 else 0
+
+                # Option E: log version (good for skewed distributions)
+                # w = np.log1p(count) * rel_weight.get(r, 1.0)
+
+                group_triples.append([(k1), (r), (k2), (w)])
+
+        ndarray_grouptriples = np.array(group_triples, dtype=np.float64)
+
+        return ndarray_grouptriples, inner_rels, out_rels, in_rels
 
     @staticmethod
     def add_node_features(
@@ -250,6 +338,36 @@ class KnowledgeGraphUtils:
             torch.tensor(train_triples, dtype=torch.long), args.num_rel
         )
 
+        return test_dataset, training_graph, entity_types
+    @staticmethod
+    def load_inductive_test_data_en_type(args: Any) -> Tuple[Any, dgl.DGLGraph, Dict[int, int]]:
+        """Load inductive test dataset and create training graph.
+
+        Args:
+            args: Object with data_path, num_rel, and other attributes.
+
+        Returns:
+            Tuple of (test_dataset, training_graph, entity_types).
+        """
+
+        try:
+            with open(args.data_path, 'rb') as f:
+                data = pickle.load(f)['ind_test_graph']
+        except (FileNotFoundError, KeyError) as e:
+            raise ValueError(f"Failed to load inductive test data from {args.data_path}: {e}")
+
+        # entity_types = KnowledgeGraphUtils.get_entity_types(data, args)
+        entity_types = data["ent_type"]
+        print(f"the type of entity type is {type(entity_types)}")
+        train_triples = np.array(data['train'])
+        num_entities = len(np.unique(train_triples[:, [0, 2]]))
+
+        hr2t, rt2h = KnowledgeGraphUtils.map_head_relation_to_tail(train_triples.tolist())
+        test_dataset = KGEEvalDataset(args, data['test'], num_entities, hr2t, rt2h)
+        training_graph = KnowledgeGraphUtils.create_bidirectional_graph(
+            torch.tensor(train_triples, dtype=torch.long), args.num_rel
+        )
+        print(f"the type of entity type is {type(entity_types)}")
         return test_dataset, training_graph, entity_types
 
    

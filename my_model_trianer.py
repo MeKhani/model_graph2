@@ -51,7 +51,7 @@ class ModelTrainer:
         # Inductive test datasets
         # indtest_test_dataset, indtest_train_g, self.ind_ent_type = get_indtest_test_dataset_and_train_g(args)
         if args.task =="inductve":
-            indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data(args)
+            indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data_en_type(args)
             self.indtest_train_g = indtest_train_g.to(self.args.gpu)
             self.indtest_test_dataloader = self._create_dataloader(
                 indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 

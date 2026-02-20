@@ -54,10 +54,10 @@ def load_and_pre_processing_data(args):
 
      if not os.path.exists(args.db_path):
         gen_subgraph_datasets(args,)
-     model_data = pickle.load(open(args.data_model_graph, 'rb'))
-     model_triples, _ = model_data['model_graph']['triples'],model_data['model_graph']['ent_type']
-   #   model_graph = get_g(list(model_triples), name_edge="weight")
-     model_graph = kgu.create_directed_graph(np.array(model_triples),edge_key="weight")
+   #   model_data = pickle.load(open(args.data_model_graph, 'rb'))
+   #   model_triples, _ = model_data['model_graph']['triples'],model_data['model_graph']['ent_type']
+   # #   model_graph = get_g(list(model_triples), name_edge="weight")
+   #   model_graph = kgu.create_directed_graph(np.array(model_triples),edge_key="weight")
      num_nodes = model_graph.num_nodes() 
      model_graph.ndata["feat"] = torch.randn(num_nodes,args.emb_dim).to(args.gpu)
      # If using DGL, ensure graph is on the correct device (assuming get_g returns a DGLGraph)

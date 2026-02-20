@@ -18,8 +18,8 @@ def data2pkl(data_name,args ):
         file.close()
 
 
-        train_tri, fix_rel_reidx, ent_reidx = reidx(train_tri)
-        valid_tri = reidx_withr_ande(valid_tri, fix_rel_reidx, ent_reidx)
+        train_tri, fix_rel_reidx, ent_reidx ,entities_type_tr, en_types = reidx(train_tri)
+        valid_tri = reidx_withr_ande(valid_tri, fix_rel_reidx, ent_reidx )
 
         file = open('dataset/new_data/{}/test_0_graph.txt'.format(data_name))
         ind_train_tri = ([l.strip().split() for l in file.readlines()])
@@ -27,12 +27,18 @@ def data2pkl(data_name,args ):
 
         file = open('dataset/new_data/{}/test_0_graph.txt'.format(data_name))
         test_valid_tri = ([l.strip().split() for l in file.readlines()])
-        file.close() 
-        test_train_tri, ent_reidx_ind = reidx_withr(ind_train_tri, fix_rel_reidx)
+        file.close()
+        test_train_tri, ent_reidx_ind, entities_type_in = reidx_withr(ind_train_tri, fix_rel_reidx, en_types)
 
         test_valid_tri = reidx_withr_ande(test_valid_tri, fix_rel_reidx, ent_reidx_ind)
-        save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri},
-                 'ind_test_graph': {'train': test_train_tri, 'valid': test_valid_tri}}
+        # print(f"the entity tipes is {entities_type}")
+        entities_type_in = {en:type for type , ents in entities_type_in.items() for en in ents}
+        entities_type_tr = {en:type for type , ents in entities_type_tr.items() for en in ents}
+        print(f"the entityh type is for test  {entities_type_in}")
+        print(f"the entityh type size  is for test  {len(entities_type_in)}")
+        print(f"the entityh type size  is for train  {len(entities_type_tr)}")
+        save_data = {'train_graph': {'train': train_tri, 'valid': valid_tri, "ent_type":entities_type_tr},
+                    'ind_test_graph': {'train': test_train_tri, 'test': test_valid_tri,"ent_type" :entities_type_in}}
 
         pickle.dump(save_data, open(f'./dataset/new_data/{data_name}.pkl', 'wb'))
         return 
@@ -118,9 +124,12 @@ def data2pkl(data_name,args ):
 def reidx(tri):
     tri_reidx = []
     ent_reidx = dict()
+    ty_index = 0 
     entidx = 0
     rel_reidx = dict()
     relidx = 0
+    en_types= dict()
+    entities_type=dict()
     for h, r, t in tri:
         if h not in ent_reidx.keys():
             ent_reidx[h] = entidx
@@ -131,13 +140,28 @@ def reidx(tri):
         if r not in rel_reidx.keys():
             rel_reidx[r] = relidx
             relidx += 1
+        
+        h_type = h.split("::")[0]
+        t_type = t.split("::")[0]
+        if h_type not in en_types.keys():
+            en_types[h_type]=ty_index
+            ty_index +=1
+        if t_type not in en_types.keys():
+            en_types[t_type] =ty_index
+            ty_index +=1 
+
+        
+        entities_type.setdefault(en_types[h_type], []).append(ent_reidx[h])
+        entities_type.setdefault(en_types[t_type], []).append(ent_reidx[t])
+
         tri_reidx.append([ent_reidx[h], rel_reidx[r], ent_reidx[t]])
-    return tri_reidx, dict(rel_reidx), dict(ent_reidx)
+    return tri_reidx, dict(rel_reidx), dict(ent_reidx) ,entities_type,en_types
 
 
-def reidx_withr(tri, rel_reidx):
+def reidx_withr(tri, rel_reidx, en_types):
     tri_reidx = []
     ent_reidx = dict()
+    entities_type = dict()
     entidx = 0
     for h, r, t in tri:
         if h not in ent_reidx.keys():
@@ -146,8 +170,13 @@ def reidx_withr(tri, rel_reidx):
         if t not in ent_reidx.keys():
             ent_reidx[t] = entidx
             entidx += 1
+        h_type = h.split("::")[0]
+        t_type = t.split("::")[0]
+        
+        entities_type.setdefault(en_types[h_type], []).append(ent_reidx[h])
+        entities_type.setdefault(en_types[t_type], []).append(ent_reidx[t])
         tri_reidx.append([ent_reidx[h], rel_reidx[r], ent_reidx[t]])
-    return tri_reidx, dict(ent_reidx)
+    return tri_reidx, dict(ent_reidx),entities_type
 
 
 def reidx_withr_ande(tri, rel_reidx, ent_reidx):
@@ -157,7 +186,6 @@ def reidx_withr_ande(tri, rel_reidx, ent_reidx):
         if h not in  ent_reidx or t not in ent_reidx:
             count +=1 
             continue
-
         tri_reidx.append([ent_reidx[h], rel_reidx[r], ent_reidx[t]])
 
     print(f"the number of entit not in valdiation is { count }")

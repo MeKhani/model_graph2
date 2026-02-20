@@ -3,10 +3,10 @@ import argparse
 def parse():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--data_name', default='primekg')
-    parser.add_argument('--data_name', default='codex_m_E')
+    parser.add_argument('--data_name', default='hetionet_E')
 
     # parser.add_argument('--name', default='primekg', type=str)
-    parser.add_argument('--name', default='codex_m_E', type=str)
+    parser.add_argument('--name', default='hetionet_E', type=str)
     # parser.add_argument('--name', default='fb237_v1_transe', type=str)
 
     parser.add_argument('--step', default='meta_train', type=str, choices=['meta_train', 'fine_tune'])
@@ -53,7 +53,7 @@ def parse():
     parser.add_argument('--seed', default=1234, type=int)
 
     # model graph parametter 
-    parser.add_argument('--is_wieghted_model_graph', default=False, type=bool)
+    parser.add_argument('--is_wieghted_model_graph', default=True, type=bool)
     parser.add_argument('--is_directed_model_graph', default=False, type=bool)
     #task 
     parser.add_argument('--task', default='inductve', type=str, choices=['inductve', 'transductive'])
