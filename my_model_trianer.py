@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from my_dataset import TrainSubgraphDataset, ValidSubgraphDataset
 from rgcn_model import RGCN
-from model_graph import WeightedGraphGNN
+from model_graph import WeightedGATGraphGNN
 from kge_model import KGEModel
 # from tools import get_g_bidir , write_evaluation_result,get_indtest_test_dataset_and_train_g
 from kg_utiles import KnowledgeGraphUtils as kgu
@@ -50,13 +50,13 @@ class ModelTrainer:
 
         # Inductive test datasets
         # indtest_test_dataset, indtest_train_g, self.ind_ent_type = get_indtest_test_dataset_and_train_g(args)
-        if args.task =="inductve":
-            indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data_en_type(args)
-            self.indtest_train_g = indtest_train_g.to(self.args.gpu)
-            self.indtest_test_dataloader = self._create_dataloader(
-                indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 
-                collate_fn=KGEEvalDataset.collate_fn
-            )
+        
+        indtest_test_dataset, indtest_train_g, self.ind_ent_type = kgu.load_inductive_test_data_en_type(args)
+        self.indtest_train_g = indtest_train_g.to(self.args.gpu)
+        self.indtest_test_dataloader = self._create_dataloader(
+            indtest_test_dataset, args.indtest_eval_bs, shuffle=False, 
+            collate_fn=KGEEvalDataset.collate_fn
+        )
 
         # State directory setup
         self.state_path = os.path.join(args.state_dir, self.name)
@@ -75,7 +75,7 @@ class ModelTrainer:
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, 
                          collate_fn=collate_fn, num_workers=0, pin_memory=self.args.gpu == "cuda")
 
-    def build_model(self) -> Tuple[WeightedGraphGNN, RGCN, KGEModel]:
+    def build_model(self) -> Tuple[WeightedGATGraphGNN, RGCN, KGEModel]:
         """
         Build and initialize the models for training.
         
@@ -83,7 +83,8 @@ class ModelTrainer:
             Tuple containing the graph autoencoder, RGCN, and KGE model.
         """
         print(f"Using device: {self.args.gpu}")
-        model_g = WeightedGraphGNN(self.args).to(self.args.gpu)
+        # model_g = WeightedGraphGNN(self.args).to(self.args.gpu)
+        model_g = WeightedGATGraphGNN(self.args).to(self.args.gpu)
         rgcn = RGCN(self.args).to(self.args.gpu)
         kge_model = KGEModel(self.args).to(self.args.gpu)
         return model_g, rgcn, kge_model

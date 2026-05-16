@@ -1,65 +1,105 @@
 import argparse
 
-def parse():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument('--data_name', default='primekg')
-    parser.add_argument('--data_name', default='hetionet_E')
 
-    # parser.add_argument('--name', default='primekg', type=str)
-    parser.add_argument('--name', default='hetionet_E', type=str)
-    # parser.add_argument('--name', default='fb237_v1_transe', type=str)
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command line arguments for the model training and evaluation.
+    """
+    parser = argparse.ArgumentParser(description="Meta-training and fine-tuning for KGE models")
 
-    parser.add_argument('--step', default='meta_train', type=str, choices=['meta_train', 'fine_tune'])
-    parser.add_argument('--metatrain_state', default='./state/fb237_v1_transe/fb237_v1_transe.best', type=str)
+    # Dataset configuration
+    parser.add_argument('--data_name', type=str, default='nell_v1',
+                        help='Name of the dataset to use')
+    parser.add_argument('--name', type=str, default='nell_v1',
+                        help='Experiment name')
+    parser.add_argument('--new_data', type=str, default='old', choices=['new', 'old'],
+                        help='Dataset type for inductive learning')
+    parser.add_argument('--test_type', type=str, default='inference_1',
+                        choices=['inference_1', 'inference_2'],
+                        help='Type of inference test')
 
-    parser.add_argument('--state_dir', '-state_dir', default='./state', type=str)
-    parser.add_argument('--log_dir', '-log_dir', default='./log', type=str)
-    parser.add_argument('--tb_log_dir', '-tb_log_dir', default='./tb_log', type=str)
+    # Training mode
+    parser.add_argument('--step', type=str, default='meta_train',
+                        choices=['meta_train', 'fine_tune'],
+                        help='Training step (meta_train or fine_tune)')
+    parser.add_argument('--metatrain_state', type=str,
+                        default='./state/fb237_v1_transe/fb237_v1_transe.best',
+                        help='Path to the pre-trained meta-training state')
 
-    # params for subgraph
-    parser.add_argument('--num_train_subgraph', default=10000)
-    parser.add_argument('--num_valid_subgraph', default=200)
-    parser.add_argument('--num_sample_for_estimate_size', default=50)
-    parser.add_argument('--rw_0', default=10, type=int)
-    parser.add_argument('--rw_1', default=10, type=int)
-    parser.add_argument('--rw_2', default=5, type=int)
-    parser.add_argument('--num_sample_cand', default=5, type=int)
-    
+    # Paths
+    parser.add_argument('--state_dir', '-state_dir', type=str, default='./state',
+                        help='Directory for saving model states')
+    parser.add_argument('--log_dir', '-log_dir', type=str, default='./log',
+                        help='Directory for saving logs')
+    parser.add_argument('--tb_log_dir', '-tb_log_dir', type=str, default='./tb_log',
+                        help='Directory for TensorBoard logs')
 
+    # Subgraph parameters
+    parser.add_argument('--num_train_subgraph', type=int, default=10000,
+                        help='Number of training subgraphs')
+    parser.add_argument('--num_valid_subgraph', type=int, default=200,
+                        help='Number of validation subgraphs')
+    parser.add_argument('--num_sample_for_estimate_size', type=int, default=50,
+                        help='Number of samples for size estimation')
+    parser.add_argument('--rw_0', type=int, default=10,
+                        help='Random walk parameter 0')
+    parser.add_argument('--rw_1', type=int, default=10,
+                        help='Random walk parameter 1')
+    parser.add_argument('--rw_2', type=int, default=5,
+                        help='Random walk parameter 2')
+    parser.add_argument('--num_sample_cand', type=int, default=5,
+                        help='Number of sample candidates')
 
-    # params for meta-train
-    parser.add_argument('--num_neg', default=32)
-    parser.add_argument('--train_num_epoch', default=3)
-    parser.add_argument('--posttrain_num_epoch', default=50)
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--lr', default=0.01, type=float)
-    parser.add_argument('--metatrain_check_per_step', default=314, type=int)
-    parser.add_argument('--posttrain_check_per_epoch', default=314, type=int)
-    parser.add_argument('--indtest_eval_bs', default=512, type=int)
+    # Meta-training parameters
+    parser.add_argument('--num_neg', type=int, default=32,
+                        help='Number of negative samples')
+    parser.add_argument('--train_num_epoch', type=int, default=3,
+                        help='Number of training epochs')
+    parser.add_argument('--posttrain_num_epoch', type=int, default=50,
+                        help='Number of post-training epochs')
+    parser.add_argument('--batch_size', type=int, default=64,
+                        help='Batch size for training')
+    parser.add_argument('--lr', type=float, default=0.01,
+                        help='Learning rate')
+    parser.add_argument('--metatrain_check_per_step', type=int, default=314,
+                        help='Checkpoint interval during meta-training')
+    parser.add_argument('--posttrain_check_per_epoch', type=int, default=314,
+                        help='Checkpoint interval during post-training')
+    parser.add_argument('--indtest_eval_bs', type=int, default=512,
+                        help='Batch size for inductive test evaluation')
 
- 
+    # R-GCN parameters
+    parser.add_argument('--num_layers', type=int, default=3,
+                        help='Number of R-GCN layers')
+    parser.add_argument('--num_bases', type=int, default=4,
+                        help='Number of bases for weight decomposition')
+    parser.add_argument('--emb_dim', type=int, default=32,
+                        help='Embedding dimension')
 
-    # params for R-GCN
-    parser.add_argument('--num_layers', default=3, type=int)
-    parser.add_argument('--num_bases', default=4, type=int)
-    parser.add_argument('--emb_dim', default=32, type=int)
+    # KGE parameters
+    parser.add_argument('--kge', type=str, default='TransE',
+                        choices=['TransE', 'DistMult', 'ComplEx', 'RotatE'],
+                        help='Knowledge graph embedding model')
+    parser.add_argument('--gamma', type=float, default=10,
+                        help='Margin parameter for KGE')
+    parser.add_argument('--adv_temp', type=float, default=1,
+                        help='Temperature for adversarial sampling')
 
-    # params for KGE
-    parser.add_argument('--kge', default='TransE', type=str, choices=['TransE', 'DistMult', 'ComplEx', 'RotatE'])
-    parser.add_argument('--gamma', default=10, type=float)
-    parser.add_argument('--adv_temp', default=1, type=float)
+    # Model graph parameters
+    parser.add_argument('--model_graph_type', type=str, default='relation_base',
+                        choices=['relation_base', 'entity_base'],
+                        help='Type of model graph')
+    parser.add_argument('--is_weighted_model_graph', type=bool, default=True,
+                        help='Whether to use weighted model graph')
+    parser.add_argument('--is_relation_model_graph', type=bool, default=False,
+                        help='Whether to use relation model graph')
+    parser.add_argument('--is_directed_model_graph', type=bool, default=False,
+                        help='Whether to use directed model graph')
 
-    parser.add_argument('--gpu', default='cuda:0', type=str)
-    parser.add_argument('--seed', default=1234, type=int)
+    # System parameters
+    parser.add_argument('--gpu', type=str, default='cuda:0',
+                        help='GPU device to use')
+    parser.add_argument('--seed', type=int, default=1234,
+                        help='Random seed for reproducibility')
 
-    # model graph parametter 
-    parser.add_argument('--is_wieghted_model_graph', default=True, type=bool)
-    parser.add_argument('--is_directed_model_graph', default=False, type=bool)
-    #task 
-    parser.add_argument('--task', default='inductve', type=str, choices=['inductve', 'transductive'])
-    parser.add_argument('--new_data', default='new', type=str, choices=['new', 'old'])
-
-
-
-    args = parser.parse_args()
-    return args 
+    return parser.parse_args()

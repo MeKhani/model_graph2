@@ -1,4 +1,4 @@
-
+import dgl
 
 import pickle
 import torch
@@ -47,61 +47,60 @@ def build_model_graph(args) -> None:
         train_g.edata['rel'],
         train_g.edges()[1]
     ]).T.tolist()
-    
-    # Initialize and populate node features
-    # features = _create_node_features(train_g, num_nodes, args.num_rel)
-    # features_in_matrix_form = _create_node_complex_features(train_g, num_nodes, args.num_rel)
-    # features_in_matrix_form =create_rel_to_rel_binary_features(train_g,args.num_rel)
-    # features_in_matrix_form1 =create_node_rel_matrix(train_g,args.num_rel)
-    features_in_matrix_form1 =create_node_structural_matrices(train_g,args.num_rel)
-    # print(f"the features size is   : { features_in_matrix_form.shape} ")
-    # print(f"the features size is   : { features_in_matrix_form1.shape} ")
-    # print(f"the features is  : { max(features_in_matrix_form.sum(axis=(1, 2)))} ")
-    # print(f" is it equal {features_in_matrix_form[:,:,250] }")
-    # print(f" is it equal {features_in_matrix_form1[:,:,250] }")
-    # print(f" is it equal {features_in_matrix_form[:,:,0] ==features_in_matrix_form1[:,:,0]}")
-
-
-
-    
-    # Calculate entity statistics
+      # Calculate entity statistics
     nentity = len(np.unique(np.array(triples)[:, [0, 2]]))
     print(f"Number of relations: {args.num_rel}")
     print(f"Number of entities: {nentity}")
-    
-    # Group nodes by similarity
-    # groups, unique_rows = partitionNodeBysimilarty(features)
-    # groups1, unique_rows1 = partition_nodes_by_matrix_similarity(features_in_matrix_form1)
-    groups1, unique_rows1 = partition_nodes_by_2r_matrix_similarity(features_in_matrix_form1)
-    # print(f"the groups in matrix form is {groups1}")
 
-    # print(f"Number of unique feature groups: {len(groups)}")
-    print(f"Number of unique feature in matrix form groups: {len(groups1)}")
+    if args.is_relation_model_graph : 
+        # Initialize and populate node features
+        features = _create_node_features(train_g, num_nodes, args.num_rel)
+        # features_in_matrix_form = _create_node_complex_features(train_g, num_nodes, args.num_rel)
+        # features_in_matrix_form =create_rel_to_rel_binary_features(train_g,args.num_rel)
+        # features_in_matrix_form1 =create_node_rel_matrix(train_g,args.num_rel)
+        # features_in_matrix_form1 =create_node_structural_matrices(train_g,args.num_rel)    
+        # Group nodes by similarity
+        groups, unique_rows = partitionNodeBysimilarty(features)
+        # groups1, unique_rows1 = partition_nodes_by_matrix_similarity(features_in_matrix_form1)
+        # groups1, unique_rows1 = partition_nodes_by_2r_matrix_similarity(features)
+        # print(f"the groups in matrix form is {groups1}")
+
+        # print(f"Number of unique feature groups: {len(groups)}")
+        print(f"Number of unique feature in matrix form groups: {len(groups)}")
     
-    # Create entity-type mapping
-    ent_type = _create_entity_type_mapping(groups1)
-    print(f"Entity type mapping size: {len(ent_type)}")
-    
-    # Save unique features
-    _save_unique_features(unique_rows1, args)
-    
-    # Generate group triples and relations
-    entity_type_triples, inner_rel, output_relations, input_relations = (
+        # Save unique features
+        _save_unique_features(unique_rows, args)
+        # Create entity-type mapping
+        ent_type = _create_entity_type_mapping(groups)
+        entity_type_triples, inner_rel, output_relations, input_relations = (
         # generate_group_triples_v1(triples, ent_type, args.num_rel)
         kgu.generate_group_triples(triples,ent_type,args.num_rel)
     )
+        if args.is_wieghted_model_graph :
+            model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight")
+        else:
+            model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight", is_weighted=False)
+        if not args.is_directed_model_graph:
+            model_graph = kgu.undirected_graph(model_graph)
+
+    else:
+        ent_type = data['train_graph']['ent_type']
+        entity_type_triples, inner_rel, output_relations, input_relations = (
+        # generate_group_triples_v1(triples, ent_type, args.num_rel)
+        kgu.generate_group_triples_by_for_hito(triples,ent_type,args.num_rel)
+    )
+    model_graph = dgl.graph((entity_type_triples[:,0],entity_type_triples[:,2]))
+    model_graph.edata["weight"] = torch.tensor(entity_type_triples[:, 3], dtype=torch.float32)
+
+    print(f"Entity type mapping size: {len(ent_type)}")
+        # Generate group triples and relations
+     
     # Validate entity_type_triples
    
     
     # Build and enhance model graph
     # model_graph = get_g(list(entity_type_triples))
-    if args.is_wieghted_model_graph :
-        model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight")
-    else:
-        model_graph = kgu.create_directed_graph(entity_type_triples,edge_key="weight", is_weighted=False)
-    if not args.is_directed_model_graph:
-        model_graph = kgu.undirected_graph(model_graph)
-
+   
 
     # model_graph = add_feature_to_model_graph_nodes(
     #     model_graph, inner_rel, output_relations, input_relations, args.num_rel
@@ -131,6 +130,7 @@ def build_model_graph(args) -> None:
     else :
         with open(f'./dataset/new_data/{args.data_name}_model_graph.pkl', 'wb') as f:
             pickle.dump(save_data, f)
+    return model_graph 
 
 def _create_node_features(train_g, num_nodes: int, num_rel: int) -> torch.Tensor:
     """Create node features based on graph relations."""

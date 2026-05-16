@@ -59,7 +59,7 @@ class KnowledgeGraphUtils:
             g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
         else:
             g.edata[edge_key]= torch.ones(g.num_edges(),1)
-        return g
+        return g 
         
     @staticmethod
     def create_directed_graph_en_model(triples: np.ndarray, edge_key: str = "rel", is_weighted = True) -> dgl.DGLGraph:
@@ -211,6 +211,124 @@ class KnowledgeGraphUtils:
         triples_list = [[k1, score, k2] for k1, score, k2 in group_triples]
         ndarray_grouptriples=  np.array(triples_list, dtype=np.float64)
         return ndarray_grouptriples, inner_rels, out_rels, in_rels
+    @staticmethod
+    def generate_group_triples_normlized(
+        triples: np.ndarray,
+        entity_types: Dict[int, int],
+        num_rel: int
+    ):
+
+        # from collections import defaultdict
+
+        # Dictionary to collect relations between group pairs
+        group_rels = defaultdict(list)
+
+        # Relations inside the same group
+        inner_rels = defaultdict(set)
+
+        # Outgoing relations from a group
+        out_rels = defaultdict(set)
+
+        # Incoming relations to a group
+        in_rels = defaultdict(set)
+
+        # Iterate over all triples (entity1, relation, entity2)
+        for e1, rel, e2 in triples:
+            k1 = entity_types.get(e1)
+            k2 = entity_types.get(e2)
+
+            # Only consider entities that have a group assignment
+            if k1 is not None and k2 is not None:
+
+                # Case 1: relation between different groups
+                if k1 != k2:
+                    group_rels[(k1, k2)].append(rel)
+                    out_rels[k1].add(rel)
+                    in_rels[k2].add(rel)
+
+                # Case 2: relation inside the same group
+                else:
+                    inner_rels[k1].add(rel)
+
+        # Compute raw edge weights as the number of relations between group pairs
+        edge_weights = {k: len(v) for k, v in group_rels.items()}
+
+        # Compute the total weight across all edges
+        total_weight = sum(edge_weights.values()) + 1e-12  # avoid division by zero
+
+        # Normalize weights so that the sum of all edge weights equals 1
+        group_triples = [
+            [k1, edge_weights[(k1, k2)] / total_weight, k2]
+            for (k1, k2) in edge_weights
+        ]
+
+        # Convert to numpy array: [source_group, normalized_weight, target_group]
+        ndarray_grouptriples = np.array(group_triples, dtype=np.float64)
+
+        return ndarray_grouptriples, inner_rels, out_rels, in_rels
+#     from collections import defaultdict
+
+
+    @staticmethod
+    def generate_group_triples_normlized_1(
+            triples: np.ndarray,
+            entity_types: Dict[int, int],
+            num_rel: int
+        ):
+
+        # from collections import defaultdict
+
+        # Dictionary to collect relations between group pairs
+        group_rels = defaultdict(list)
+
+        # Relations inside the same group
+        inner_rels = defaultdict(set)
+
+        # Outgoing relations from a group
+        out_rels = defaultdict(set)
+
+        # Incoming relations to a group
+        in_rels = defaultdict(set)
+
+        # Iterate over all triples (entity1, relation, entity2)
+        for e1, rel, e2 in triples:
+            k1 = entity_types.get(e1)
+            k2 = entity_types.get(e2)
+
+            # Only consider entities that have a group assignment
+            if k1 is not None and k2 is not None:
+
+                # Case 1: relation between different groups
+                if k1 != k2:
+                    group_rels[(k1, k2)].append(rel)
+                    out_rels[k1].add(rel)
+                    in_rels[k2].add(rel)
+
+                # Case 2: relation inside the same group
+                else:
+                    inner_rels[k1].add(rel)
+
+        # Compute raw edge weights as the number of relations between group pairs
+        edge_weights = {k: len(v) for k, v in group_rels.items()}
+        # raw weights: w_ij = count of relations between groups (or any nonnegative score)
+        # edge_weights = {k: len(v) for k, v in group_rels.items()}
+
+        # sum of outgoing weights per source node
+        out_sum = defaultdict(float)
+        for (k1, k2), w in edge_weights.items():
+            out_sum[k1] += w
+
+        eps = 1e-12
+        group_triples = [
+            [k1, edge_weights[(k1, k2)] / (out_sum[k1] + eps), k2]
+            for (k1, k2) in edge_weights
+        ]
+
+        # Convert to numpy array: [source_group, normalized_weight, target_group]
+        ndarray_grouptriples = np.array(group_triples, dtype=np.float64)
+
+        return ndarray_grouptriples, inner_rels, out_rels, in_rels
+
     @staticmethod
     def generate_group_triples_by_for_hito(
     triples: np.ndarray,
