@@ -6,17 +6,15 @@ from generate_model_graph import build_model_graph
 from data_prosessing import data_to_pickle
 from subgraph_genrator import gen_subgraph_datasets
 from kg_utiles import KnowledgeGraphUtils as kgu
-
-
 def load_and_preprocess_data(args):
     """
     Load / prepare dataset, model graph, and subgraph DB.
     Creates necessary directories and files if missing.
     """
     # ── 1. Determine root directory ─────────────────────────────────────
-    root = Path("dataset/new_data" if args.new_data == "new" else "dataset")
+    root = Path(args.benchmark)
 
-    print(f"Dataset: {args.data_name} (mode: {args.new_data})")
+    print(f"Dataset: {args.data_name} (mode: {args.benchmark})")
 
     # ── 2. Embedding dimensions ─────────────────────────────────────────
     args.ent_dim = args.emb_dim
@@ -29,7 +27,7 @@ def load_and_preprocess_data(args):
 
     # ── 3. Device ───────────────────────────────────────────────────────
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    args.gpu = str(args.device)  # keep string form if code elsewhere expects it
+    args.gpu = str(args.device)
 
     # ── 4. Define all important paths as Path objects ───────────────────
     paths = {
@@ -37,27 +35,47 @@ def load_and_preprocess_data(args):
         'model_graph':  root / f"{args.data_name}_model_graph.pkl",
         'unique_feat':  root / "unique_features" / f"unique_features_{args.data_name}.pkl",
         'subgraph_db':  root / f"{args.data_name}_subgraph",
-        'results':      Path("../../results") / args.data_name,
     }
 
-    # Create directories if missing
-    paths['results'].mkdir(parents=True, exist_ok=True)
+    # ── 5. Determine graph type directory ───────────────────────────────
+    if args.is_directed_model_graph and args.is_weighted_model_graph:
+        graph_type = "directed_and_weighted"
+    elif not args.is_directed_model_graph and args.is_weighted_model_graph:
+        graph_type = "undirected_and_weighted"
+    elif not args.is_directed_model_graph and not args.is_weighted_model_graph:
+        graph_type = "undirected_and_unweighted"
+    elif args.is_directed_model_graph and not args.is_weighted_model_graph:
+        graph_type = "directed_and_unweighted"
+
+    # ── 6. Build results path ──────────────────────────────────────────
+    if args.benchmark == "dataset/new_data":
+        results_path = Path("../random_seed") / f"seed_{args.seed}" / args.data_name / args.test_type / graph_type
+    else:
+        results_path = Path("../results") / f"seed_{args.seed}" / args.data_name / graph_type
+
+    # Remove spaces and normalize path
+    args.save_result = str(results_path).strip()
+    
+    # Create directories
+    results_path.mkdir(parents=True, exist_ok=True)
     paths['unique_feat'].parent.mkdir(parents=True, exist_ok=True)
 
-    # Attach to args (optional — but keeps old interface if needed)
-    args.data_path                   = str(paths['pkl'])
-    args.data_model_graph            = str(paths['model_graph'])
+    # Attach remaining paths to args
+    args.data_path                     = str(paths['pkl'])
+    args.data_model_graph              = str(paths['model_graph'])
     args.unique_features_for_model_graph = str(paths['unique_feat'])
-    args.db_path                     = str(paths['subgraph_db'])
-    args.save_result                 = str(paths['results']) + os.sep   # keep trailing slash if old code expects it
+    args.db_path                       = str(paths['subgraph_db'])
 
+    
     # ── 5. Seed ─────────────────────────────────────────────────────────
     kgu.set_seed(args.seed)
+    
 
     # ── 6. Generate pickled data if missing ─────────────────────────────
     if not paths['pkl'].exists():
         print(f"Pickle file missing → running data_to_pickle for {args.data_name}")
-        data_to_pickle(args.data_name, args)   # ← note: most implementations expect (data_name, args)
+        data_to_pickle(args)   # ← note: most implementations expect (data_name, args)
+    return
 
     # ── 7. Get number of relations ──────────────────────────────────────
     args.num_rel = kgu.get_num_relations(args.data_path)

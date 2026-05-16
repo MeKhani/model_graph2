@@ -14,10 +14,11 @@ import numpy as np
 def main():
     seed =[1234,]
     args  = parse_args()
-    return
+    
 
    
     model_graph= load_and_preprocess_data(args)
+    return 
     # return
     model_trianer = ModelTrainer(args, model_graph)
     model_trianer.train()
