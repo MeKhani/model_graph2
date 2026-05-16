@@ -14,7 +14,8 @@ import numpy as np
 def main():
     seed =[1234,]
     args  = parse_args()
-    return 
+    return
+
    
     model_graph= load_and_preprocess_data(args)
     # return

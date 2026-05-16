@@ -12,11 +12,12 @@ def parse_args() -> argparse.Namespace:
                         help='Name of the dataset to use')
     parser.add_argument('--name', type=str, default='nell_v1',
                         help='Experiment name')
-    parser.add_argument('--new_data', type=str, default='old', choices=['new', 'old'],
-                        help='Dataset type for inductive learning')
+    parser.add_argument('--benchmark', type=str, default='dataset',
+                        choices=['dataset', 'dataset/new_data'],
+                        help='Benchmark type for inductive learning')
     parser.add_argument('--test_type', type=str, default='inference_1',
                         choices=['inference_1', 'inference_2'],
-                        help='Type of inference test')
+                        help='Type of inference test  for new data')
 
     # Training mode
     parser.add_argument('--step', type=str, default='meta_train',
@@ -25,14 +26,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--metatrain_state', type=str,
                         default='./state/fb237_v1_transe/fb237_v1_transe.best',
                         help='Path to the pre-trained meta-training state')
-
-    # Paths
-    parser.add_argument('--state_dir', '-state_dir', type=str, default='./state',
-                        help='Directory for saving model states')
-    parser.add_argument('--log_dir', '-log_dir', type=str, default='./log',
-                        help='Directory for saving logs')
-    parser.add_argument('--tb_log_dir', '-tb_log_dir', type=str, default='./tb_log',
-                        help='Directory for TensorBoard logs')
 
     # Subgraph parameters
     parser.add_argument('--num_train_subgraph', type=int, default=10000,
