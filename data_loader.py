@@ -3,6 +3,7 @@ import torch
 from pathlib import Path
 
 from generate_model_graph import build_model_graph
+import generate_model_graph_by_data 
 from data_prosessing import data_to_pickle
 from subgraph_genrator import gen_subgraph_datasets
 from kg_utiles import KnowledgeGraphUtils as kgu
@@ -75,10 +76,11 @@ def load_and_preprocess_data(args):
     if not paths['pkl'].exists():
         print(f"Pickle file missing → running data_to_pickle for {args.data_name}")
         data_to_pickle(args)   # ← note: most implementations expect (data_name, args)
-    return
+  
 
     # ── 7. Get number of relations ──────────────────────────────────────
     args.num_rel = kgu.get_num_relations(args.data_path)
+    # return 
 
     # ── 8. Build / load model graph ─────────────────────────────────────
     # if not paths['model_graph'].exists():
@@ -86,7 +88,11 @@ def load_and_preprocess_data(args):
     #     build_model_graph(args)
 
     print("Building/loading model graph...")
-    model_graph = build_model_graph(args)
+    if args.model_graph_type == "relation_base" :
+        model_graph = build_model_graph(args)
+    elif args.model_graph_type == "entity_base" :
+        model_graph = generate_model_graph_by_data.build_model_graph(args)
+
 
     print(f"Model graph created: {model_graph}")
 
