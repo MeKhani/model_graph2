@@ -51,7 +51,6 @@ state/
 *.heic
 
 # Ignore all SVG images
-*.svg
 
 # Ignore all ICO images
 *.ico
