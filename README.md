@@ -15,7 +15,7 @@ Link prediction in knowledge graphs relies heavily on high-quality embeddings. H
 ---
 ###  Key Idea
 
-MGIL builds **two model graphs** using two strategies:
+MGIL builds **two type model graphs** using two strategies:
 
 #### 1. Relation-based Clustering
 Entities are grouped based on the similarity of their:
