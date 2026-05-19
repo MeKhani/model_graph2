@@ -1,4 +1,4 @@
-# Model Graph Inductive Learning (MGIL) for Knowledge Graph Completion
+## Model Graph Inductive Learning (MGIL) for Knowledge Graph Completion
 
 This repository contains the official implementation of the paper:
 
