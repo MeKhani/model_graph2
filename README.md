@@ -6,9 +6,7 @@ This repository contains the official implementation of the paper:
 
 ###  Overview
 
-Link prediction in knowledge graphs relies heavily on high-quality embeddings. However, most existing approaches focus only on local neighborhood aggregation and ignore the global structure of the graph.
-
-To address this limitation, we propose **MGIL (Model Graph Inductive Learning)**, a novel framework that:
+Link prediction in knowledge graphs relies heavily on high-quality embeddings. However, most existing approaches focus only on local neighborhood aggregation and ignore the global structure of the graph. To address this limitation, we propose **MGIL (Model Graph Inductive Learning)**, a novel framework that:
 
 - Constructs a **model graph** from the original knowledge graph
 - Captures **global structural patterns**
