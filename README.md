@@ -2,7 +2,6 @@
 
 This repository contains the official implementation of the paper:
 
-**Model Graph Inductive Learning for Knowledge Graph Completion**
 ---
 
 ###  Overview
