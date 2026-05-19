@@ -47,12 +47,12 @@ A **Graph Neural Network (GNN)** is then applied to the model graph to learn emb
 #### Entity-type Model Graph
 ![Type](figure/type_based.svg)
 
-###  Datasets
+###  Inductive Datasets
 
 We evaluate MGIL on several widely-used and recently proposed inductive knowledge graph completion benchmarks:
 
-- **FB15k-237 (Inductive)**  
-- **WN18RR (Inductive)**  
+- **FB15k-237**  
+- **WN18RR**  
 - **NELL-995**  
 
 - **Shomer Inductive Benchmarks:**  
