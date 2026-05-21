@@ -62,22 +62,65 @@ We evaluate MGIL on several widely-used and recently proposed inductive knowledg
   - **CoDEx-M_E**  
   - **WN18RR_E**  
   - **HetioNet_E**
+## 🚀 How to Run
 
-  ##  Usage
+We provide a simple command-line interface to train and evaluate the MGIL framework.
 
-You can run the MGIL framework using the following command:
+---
+
+### 🔹 1. Meta-Training
+
+Train the model on base datasets:
 
 ```bash
 python main.py \
+  --step meta_train \
   --data_name codex_m_E \
-  --name codex_m_E \
-  --benchmark dataset/new_data \
-  --model_graph_type relation_base
-  Or
-  python main.py \
-  --name HetioNet_E\
+  --model_graph_type relation_base \
+  --kge TransE \
+  --num_layers 3 \
+  --emb_dim 32
+```
+
+---
+
+### 🔹 2. Fine-Tuning (Inductive Setting)
+
+Adapt the pre-trained model to a new dataset:
+
+```bash
+python main.py \
+  --step fine_tune \
+  --data_name WN18RR_E \
+  --metatrain_state ./state/pretrained_model.best
+```
+
+---
+
+### 🔹 3. Evaluation
+
+Evaluate the model on inductive test sets:
+
+```bash
+python main.py \
+  --step meta_train \
   --data_name HetioNet_E \
-  --model_graph_type entity_base
+  --test_type inference_1
+```
+
+---
+
+### 🔹 4. Key Arguments
+
+* `--data_name`: Dataset name (e.g., CoDEx-M_E, WN18RR_E, HetioNet_E)
+* `--step`: Training mode (`meta_train` or `fine_tune`)
+* `--model_graph_type`: Graph construction type
+* `--kge`: KGE model (TransE, RotatE, etc.)
+* `--num_layers`: Number of GNN layers
+* `--emb_dim`: Embedding dimension
+
+For a full list of parameters, see the **Command Line Arguments** section.
+
 
 
 ##  Citation

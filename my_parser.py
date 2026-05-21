@@ -10,8 +10,8 @@ def parse_args() -> argparse.Namespace:
     # Dataset configuration
     parser.add_argument('--data_name', type=str, default='codex_m_E',
                         help='Name of the dataset to use')
-    parser.add_argument('--name', type=str, default='codex_m_E',
-                        help='Experiment name')
+    # parser.add_argument('--name', type=str, default='codex_m_E',
+    #                     help='Experiment name')
     parser.add_argument('--benchmark', type=str, default='dataset/new_data',
                         choices=['dataset', 'dataset/new_data'],
                         help='Benchmark type for inductive learning')
