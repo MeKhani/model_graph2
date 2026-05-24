@@ -8,11 +8,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Meta-training and fine-tuning for KGE models")
 
     # Dataset configuration
-    parser.add_argument('--data_name', type=str, default='codex_m_E',
+    parser.add_argument('--data_name', type=str, default='nell_v1',
                         help='Name of the dataset to use')
-    # parser.add_argument('--name', type=str, default='codex_m_E',
-    #                     help='Experiment name')
-    parser.add_argument('--benchmark', type=str, default='dataset/new_data',
+    parser.add_argument('--state_dir', type=str, default='state',
+                        help='dir of save best model ')
+   
+    parser.add_argument('--benchmark', type=str, default='dataset',
                         choices=['dataset', 'dataset/new_data'],
                         help='Benchmark type for inductive learning')
     parser.add_argument('--test_type', type=str, default='inference_1',
@@ -84,8 +85,6 @@ def parse_args() -> argparse.Namespace:
                         help='Type of model graph')
     parser.add_argument('--is_weighted_model_graph', type=bool, default=True,
                         help='Whether to use weighted model graph')
-    parser.add_argument('--is_relation_model_graph', type=bool, default=False,
-                        help='Whether to use relation model graph')
     parser.add_argument('--is_directed_model_graph', type=bool, default=False,
                         help='Whether to use directed model graph')
 

@@ -88,10 +88,9 @@ def load_and_preprocess_data(args):
     #     build_model_graph(args)
 
     print("Building/loading model graph...")
-    if args.model_graph_type == "relation_base" :
-        model_graph = build_model_graph(args)
-    elif args.model_graph_type == "entity_base" :
-        model_graph = generate_model_graph_by_data.build_model_graph(args)
+    
+    model_graph = build_model_graph(args)
+   
 
 
     print(f"Model graph created: {model_graph}")

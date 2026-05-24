@@ -42,25 +42,43 @@ class KnowledgeGraphUtils:
         return dgl.add_reverse_edges(hetro_graph)
 
     @staticmethod
-    def create_directed_graph(triples: np.ndarray, edge_key: str = "rel", is_weighted = True) -> dgl.DGLGraph:
+    def create_directed_graph(triples: np.ndarray, edge_key: str = "rel", is_weighted: bool = True) -> dgl.DGLGraph:
         """Create a directed DGL graph from triples.
+        
+        Supports both relation_base (N, 3) and entity_base (N, 4) formats.
 
         Args:
-            triples: Array of shape (N, 3) with [head, relation, tail].
+            triples: Array of shape (N, 3) or (N, 4) with [head, relation, tail] 
+                    or [head, relation, tail, weight].
             edge_key: Name for edge data storing relations.
+            is_weighted: If True and shape is (N, 4), use column 3 as weight.
+                        If True and shape is (N, 3), use relation column as weight.
+                        If False, all edge weights are 1.
 
         Returns:
-            DGL graph with edges head→tail and relations in edata[edge_key].
+            DGL graph with edges head->tail and data in edata[edge_key].
         """
-        if triples.shape[1] != 3:
-            raise ValueError("Triples must have shape (N, 3)")
-        g = dgl.graph((triples[:, 0], triples[:, 2]))
-        if is_weighted :
-            g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
-        else:
-            g.edata[edge_key]= torch.ones(g.num_edges(),1)
-        return g 
+        num_cols = triples.shape[1]
         
+        if num_cols not in (3, 4):
+            raise ValueError(f"Triples must have shape (N, 3) or (N, 4), got (N, {num_cols})")
+        
+        # Create graph from head and tail columns
+        g = dgl.graph((triples[:, 0], triples[:, 2]))
+        
+        if is_weighted:
+            if num_cols == 4:
+                # entity_base: use explicit weight column
+                g.edata[edge_key] = torch.tensor(triples[:, 3], dtype=torch.float32)
+            else:
+                # relation_base: use relation column as weight
+                g.edata[edge_key] = torch.tensor(triples[:, 1], dtype=torch.float32)
+        else:
+            # Unweighted: all edges get weight 1
+            g.edata[edge_key] = torch.ones(g.num_edges(), dtype=torch.float32)
+        
+        return g
+
     @staticmethod
     def create_directed_graph_en_model(triples: np.ndarray, edge_key: str = "rel", is_weighted = True) -> dgl.DGLGraph:
         """Create a directed DGL graph from triples.
@@ -433,20 +451,26 @@ class KnowledgeGraphUtils:
     def load_inductive_test_data(args: Any) -> Tuple[Any, dgl.DGLGraph, Dict[int, int]]:
         """Load inductive test dataset and create training graph.
 
+        Works for both relation_base and entity_base modes.
+
         Args:
-            args: Object with data_path, num_rel, and other attributes.
+            args: Object with data_path, num_rel, model_graph_type, and other attributes.
 
         Returns:
             Tuple of (test_dataset, training_graph, entity_types).
         """
-
         try:
             with open(args.data_path, 'rb') as f:
                 data = pickle.load(f)['ind_test_graph']
         except (FileNotFoundError, KeyError) as e:
             raise ValueError(f"Failed to load inductive test data from {args.data_path}: {e}")
 
-        entity_types = KnowledgeGraphUtils.get_entity_types(data, args)
+        # Get entity types based on model graph type
+        if args.model_graph_type == "entity_base":
+            entity_types = data["ent_type"]
+        else:
+            entity_types = KnowledgeGraphUtils.get_entity_types(data, args)
+
         train_triples = np.array(data['train'])
         num_entities = len(np.unique(train_triples[:, [0, 2]]))
 
@@ -456,36 +480,6 @@ class KnowledgeGraphUtils:
             torch.tensor(train_triples, dtype=torch.long), args.num_rel
         )
 
-        return test_dataset, training_graph, entity_types
-    @staticmethod
-    def load_inductive_test_data_en_type(args: Any) -> Tuple[Any, dgl.DGLGraph, Dict[int, int]]:
-        """Load inductive test dataset and create training graph.
-
-        Args:
-            args: Object with data_path, num_rel, and other attributes.
-
-        Returns:
-            Tuple of (test_dataset, training_graph, entity_types).
-        """
-
-        try:
-            with open(args.data_path, 'rb') as f:
-                data = pickle.load(f)['ind_test_graph']
-        except (FileNotFoundError, KeyError) as e:
-            raise ValueError(f"Failed to load inductive test data from {args.data_path}: {e}")
-
-        # entity_types = KnowledgeGraphUtils.get_entity_types(data, args)
-        entity_types = data["ent_type"]
-        print(f"the type of entity type is {type(entity_types)}")
-        train_triples = np.array(data['train'])
-        num_entities = len(np.unique(train_triples[:, [0, 2]]))
-
-        hr2t, rt2h = KnowledgeGraphUtils.map_head_relation_to_tail(train_triples.tolist())
-        test_dataset = KGEEvalDataset(args, data['test'], num_entities, hr2t, rt2h)
-        training_graph = KnowledgeGraphUtils.create_bidirectional_graph(
-            torch.tensor(train_triples, dtype=torch.long), args.num_rel
-        )
-        print(f"the type of entity type is {type(entity_types)}")
         return test_dataset, training_graph, entity_types
 
    
