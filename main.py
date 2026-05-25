@@ -18,11 +18,13 @@ def main():
 
    
     model_graph= load_and_preprocess_data(args)
-   
-    model_trianer = ModelTrainer(args, model_graph)
-    model_trianer.train()
-    # post_train= PostTrainer(args,model_graph)
-    # post_train.train()
+    if args.step=="meta_train":
+        model_trianer = ModelTrainer(args, model_graph)
+        model_trianer.train()
+    
+    if args.step=="fine_tune":
+        post_train= PostTrainer(args,model_graph)
+        post_train.train()
 
 
 main()

@@ -8,12 +8,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Meta-training and fine-tuning for KGE models")
 
     # Dataset configuration
-    parser.add_argument('--data_name', type=str, default='nell_v1',
+    parser.add_argument('--data_name', type=str, default='hetionet_E',
                         help='Name of the dataset to use')
     parser.add_argument('--state_dir', type=str, default='state',
                         help='dir of save best model ')
    
-    parser.add_argument('--benchmark', type=str, default='dataset',
+    parser.add_argument('--benchmark', type=str, default='dataset/new_data',
                         choices=['dataset', 'dataset/new_data'],
                         help='Benchmark type for inductive learning')
     parser.add_argument('--test_type', type=str, default='inference_1',
@@ -25,11 +25,11 @@ def parse_args() -> argparse.Namespace:
                         choices=['meta_train', 'fine_tune'],
                         help='Training step (meta_train or fine_tune)')
     parser.add_argument('--metatrain_state', type=str,
-                        default='./state/fb237_v1_transe/fb237_v1_transe.best',
+                        default='./state/codex_m_E/codex_m_E.best',
                         help='Path to the pre-trained meta-training state')
 
     # Subgraph parameters
-    parser.add_argument('--num_train_subgraph', type=int, default=10000,
+    parser.add_argument('--num_train_subgraph', type=int, default=5000,
                         help='Number of training subgraphs')
     parser.add_argument('--num_valid_subgraph', type=int, default=200,
                         help='Number of validation subgraphs')
@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
                         help='Temperature for adversarial sampling')
 
     # Model graph parameters
-    parser.add_argument('--model_graph_type', type=str, default='relation_base',
+    parser.add_argument('--model_graph_type', type=str, default='entity_base',
                         choices=['relation_base', 'entity_base'],
                         help='Type of model graph')
     parser.add_argument('--is_weighted_model_graph', type=bool, default=True,

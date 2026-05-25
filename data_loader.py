@@ -3,7 +3,6 @@ import torch
 from pathlib import Path
 
 from generate_model_graph import build_model_graph
-import generate_model_graph_by_data 
 from data_prosessing import data_to_pickle
 from subgraph_genrator import gen_subgraph_datasets
 from kg_utiles import KnowledgeGraphUtils as kgu

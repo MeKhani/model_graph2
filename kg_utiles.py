@@ -475,7 +475,11 @@ class KnowledgeGraphUtils:
         num_entities = len(np.unique(train_triples[:, [0, 2]]))
 
         hr2t, rt2h = KnowledgeGraphUtils.map_head_relation_to_tail(train_triples.tolist())
-        test_dataset = KGEEvalDataset(args, data['test'], num_entities, hr2t, rt2h)
+        if args.benchmark=="dataset":
+            test_dataset = KGEEvalDataset(args, data['test'], num_entities, hr2t, rt2h)
+        else:
+            test_dataset = KGEEvalDataset(args, data['valid'], num_entities, hr2t, rt2h)
+
         training_graph = KnowledgeGraphUtils.create_bidirectional_graph(
             torch.tensor(train_triples, dtype=torch.long), args.num_rel
         )
@@ -543,7 +547,11 @@ class KnowledgeGraphUtils:
             Dictionary mapping each entity (node) to its type index.
         """
         # Collect all triples from train/valid/test
-        all_triples = np.array(data['train'] + data['valid'] + data['test'])
+        if args.benchmark == "dataset":
+            all_triples = np.array(data['train'] + data['valid'] + data['test'])
+        else:
+            all_triples = np.array(data['train'] + data['valid'] )
+
 
         # Build directed graph
         graph = KnowledgeGraphUtils.create_directed_graph(all_triples)

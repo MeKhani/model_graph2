@@ -18,7 +18,7 @@ def gen_subgraph_datasets(args):
     _, ent_type = model_data['model_graph']['triples'],model_data['model_graph']['ent_type']
     # train_g = get_g(data['train_graph']['train'] + data['train_graph']['valid']
     #                 + data['train_graph']['test'])
-    if args.new_data=="old":
+    if args.benchmark=="dataset":
         train_g = kgu.create_directed_graph(np.array(data['train_graph']['train'] + data['train_graph']['valid']
                     + data['train_graph']['test']))
     else:
