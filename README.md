@@ -195,9 +195,9 @@ python main.py \
 If you find this work useful, please cite:
 
 ```bibtex
-@article{khani2025mgil,
+@article{khani2026mgil,
   title={Model Graph Inductive Learning for Knowledge Graph Completion},
   author={Khani, Mohommad Esmaeil and Hasheminejad, Mahdieh and Taherkhani, Ali and Hajiabolhassan, Hosein},
   journal={},
-  year={2025}
+  year={2026}
 }
