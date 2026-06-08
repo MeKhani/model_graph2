@@ -22,9 +22,15 @@ Entities are grouped based on the similarity of their:
 - Incoming relations
 - Outgoing relations
 
+
 #### 2. Type-based Clustering
 Entities are grouped based on their semantic types:
 - Example: drugs, proteins, diseases
+### Edge in Model Graph
+
+In the model graph, nodes represent groups of entities that share identical relational feature vectors. An undirected edge between two nodes \(U_j\) and \(U_k\) is created if there exists at least one triple \((v_p, r, v_q)\) in the knowledge graph such that \(v_p \in U_j\) and \(v_q \in U_k\), where \(r \in \mathcal{R}\).
+
+This means that if any entity in group \(U_j\) is connected to any entity in group \(U_k\) through any observed relation in the original knowledge graph, an edge is added between the corresponding model graph nodes. The edge captures aggregated interactions between entity groups rather than individual entity-level connections.
 
 A **Graph Neural Network (GNN)** is then applied to the model graph to learn embeddings, which are transferred to the original graph.
 
