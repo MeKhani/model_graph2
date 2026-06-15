@@ -1,3 +1,23 @@
+
+"""
+Code Acknowledgment:
+
+This module is partially inspired by the subgraph generation strategy
+used in the MorsE model:
+
+Chen et al., "Meta-Knowledge Transfer for Inductive Knowledge Graph Embedding",
+SIGIR 2022.
+
+The original implementation has not been directly reused. Instead,
+the code has been significantly refactored, modified, and extended.
+Additionally, new strategies and improvements have been introduced
+in this work.
+
+As a result, this implementation differs substantially from the
+original MorsE code in both structure and functionality.
+"""
+
+
 import pickle
 import torch
 import numpy as np

@@ -1,3 +1,21 @@
+"""
+Code Acknowledgment:
+
+This module implements standard Knowledge Graph Embedding (KGE) models,
+including TransE, DistMult, ComplEx, and RotatE.
+
+The implementation is based on widely used formulations described in
+the literature on knowledge graph representation learning, including
+original papers and commonly adopted open-source implementations.
+
+The code has been independently re-implemented and integrated into our
+framework, with modifications for batch training, negative sampling modes,
+and compatibility with the proposed model architecture.
+
+Therefore, while the core scoring functions follow established definitions,
+the implementation is adapted and customized for this work.
+"""
+
 import torch.nn as nn
 import torch
 

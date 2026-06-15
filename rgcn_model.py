@@ -1,3 +1,16 @@
+"""
+Code Acknowledgment:
+
+This module is inspired by Relational Graph Convolutional Networks (R-GCN)
+(Schlichtkrull et al., 2018) and related message-passing neural network
+frameworks for knowledge graph representation learning.
+
+The implementation is a re-engineered version adapted to our experimental
+pipeline. It introduces modifications in aggregation strategy, parameter
+sharing via basis decomposition, and graph-level representation construction.
+
+No original source code has been directly reused.
+"""
 import torch
 from torch import nn
 import torch.nn.functional as F
