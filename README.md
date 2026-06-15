@@ -198,12 +198,5 @@ python main.py \
 
 ##  Citation
 
-If you find this work useful, please cite:
-
-```bibtex
-@article{khani2026mgil,
-  title={Model Graph Inductive Learning for Knowledge Graph Completion},
-  author={Khani, Mohommad Esmaeil and Hasheminejad, Mahdieh and Taherkhani, Ali and Hajiabolhassan, Hosein},
-  journal={},
-  year={2026}
-}
+- Mohommad Esmaeil Khani,  Mahdieh Hasheminejad, Ali Taherkhani, and Hossein Hajiabolhassan, 
+Model Graph Inductive Learning for Knowledge Graph Completion, 
