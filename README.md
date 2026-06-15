@@ -197,13 +197,7 @@ python main.py \
 | `--posttrain_check_per_epoch` | `int` | `625` | Checkpoint interval during post-training |
 
 ##  Citation
+---
 
-If you find this work useful, please cite:
-
-```bibtex
-@article{khani2026mgil,
-  title={Model Graph Inductive Learning for Knowledge Graph Completion},
-  author={Khani, Mohommad Esmaeil and Hasheminejad, Mahdieh and Taherkhani, Ali and Hajiabolhassan, Hosein},
-  journal={},
-  year={2026}
-}
+- Mohommad Esmaeil Khani,  Mahdieh Hasheminejad, Ali Taherkhani, and Hossein Hajiabolhassan, 
+Model Graph Inductive Learning for Knowledge Graph Completion, 
